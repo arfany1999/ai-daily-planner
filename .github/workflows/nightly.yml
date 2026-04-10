@@ -1,0 +1,41 @@
+name: Nightly Run
+
+on:
+  schedule:
+    # 8 PM Melbourne time = 10:00 UTC (AEST) or 09:00 UTC (AEDT)
+    # Using 09:00 UTC to cover AEDT (daylight saving)
+    - cron: '0 9 * * *'
+  workflow_dispatch: # Manual trigger for testing
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run nightly script
+        env:
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          ALLOWED_EMAIL: ${{ secrets.ALLOWED_EMAIL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          TO_EMAIL: ${{ secrets.TO_EMAIL }}
+          FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+          DB_PATH: ${{ github.workspace }}/db/planner.db
+        run: python scripts/nightly_run.py

@@ -1,0 +1,64 @@
+name: Daytime Refresh
+
+on:
+  schedule:
+    # Every 3 hours during 8 AM - 6 PM Melbourne time
+    # Melbourne AEDT: 8AM=21UTC(prev), 11AM=0UTC, 2PM=3UTC, 5PM=6UTC
+    # Melbourne AEST: 8AM=22UTC(prev), 11AM=1UTC, 2PM=4UTC, 5PM=7UTC
+    - cron: '0 22,1,4,7 * * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install requests pytz
+
+      - name: Lightweight refresh
+        env:
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          DB_PATH: ${{ github.workspace }}/db/planner.db
+        run: |
+          python3 -c "
+          import requests, os
+
+          BASE = os.environ.get('NEXTAUTH_URL', 'http://localhost:3000')
+          print('Daytime refresh — Canvas + 3h connections')
+
+          # Check Canvas for new uploads/announcements
+          try:
+              r = requests.get(f'{BASE}/api/canvas', timeout=60)
+              print(f'Canvas: {r.status_code}')
+          except Exception as e:
+              print(f'Canvas error: {e}')
+
+          # Detect changes
+          try:
+              r = requests.get(f'{BASE}/api/canvas/changes', timeout=60)
+              print(f'Changes: {r.status_code}')
+          except Exception as e:
+              print(f'Changes error: {e}')
+
+          # Fetch 3h-frequency connections (handled by fetch-all filtering)
+          try:
+              r = requests.post(f'{BASE}/api/connections/fetch-all', timeout=120)
+              print(f'Connections: {r.status_code}')
+          except Exception as e:
+              print(f'Connections error: {e}')
+
+          print('Refresh complete')
+          "
