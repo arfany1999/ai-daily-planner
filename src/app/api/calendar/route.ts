@@ -11,15 +11,14 @@ export const GET = withAuth(async (_req, userId) => {
     const calendar = await getCalendarService(userId);
 
     const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    const endDate = new Date(tomorrow);
-    endDate.setDate(endDate.getDate() + 7);
+    const startDate = new Date(now);
+    startDate.setHours(0, 0, 0, 0); // Start from today midnight
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 8); // 8 days to cover full week ahead
 
     const res = await calendar.events.list({
       calendarId: 'primary',
-      timeMin: tomorrow.toISOString(),
+      timeMin: startDate.toISOString(),
       timeMax: endDate.toISOString(),
       timeZone: TIMEZONE,
       singleEvents: true,

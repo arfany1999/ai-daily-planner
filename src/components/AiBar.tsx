@@ -118,9 +118,9 @@ export default function AiBar() {
   const suggestions = ['When is my next deadline?', 'What should I study today?', 'Quiz me on BIOL2368', 'Schedule a study session'];
 
   return (
-    <div style={{ position: 'fixed', bottom: 38, left: 0, right: 0, zIndex: 100 }}>
+    <div style={{ position: 'fixed', bottom: 38, left: 0, right: 0, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       {open && (
-        <div style={{ background: T.bg2, borderTop: `1px solid ${T.tealBrd}`, maxHeight: '55vh', overflowY: 'auto', padding: 14 }}>
+        <div style={{ background: T.bg2, borderTop: `1px solid ${T.tealBrd}`, maxHeight: '55vh', overflowY: 'auto', padding: 14, width: '100%', maxWidth: 560 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{
@@ -212,7 +212,7 @@ export default function AiBar() {
         </div>
       )}
 
-      <div style={{ background: T.bg2, borderTop: `1px solid ${T.border}`, padding: '7px 10px', display: 'flex', gap: 6 }}>
+      <div style={{ background: T.bg2, borderTop: `1px solid ${T.border}`, padding: '7px 10px', display: 'flex', gap: 6, width: '100%', maxWidth: 560 }}>
         <input
           ref={inputRef}
           value={msg}
