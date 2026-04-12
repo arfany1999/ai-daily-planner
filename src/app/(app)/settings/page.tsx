@@ -135,6 +135,7 @@ function CanvasTokenEntry({ onConnected }: { onConnected: () => void }) {
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [conns, setConns] = useState({ google: true, gmail: true, canvas: false });
+  const [googleToast, setGoogleToast] = useState('');
 
   useEffect(() => {
     fetch('/api/settings')
@@ -152,6 +153,24 @@ export default function SettingsPage() {
         });
       })
       .catch(() => {});
+
+    // Check if we just came back from Google OAuth connect
+    const params = new URLSearchParams(window.location.search);
+    const g = params.get('google');
+    if (g === 'connected') {
+      setConns((c) => ({ ...c, google: true, gmail: true }));
+      setGoogleToast('Google Calendar & Gmail connected!');
+      window.history.replaceState({}, '', '/settings');
+      setTimeout(() => setGoogleToast(''), 4000);
+    } else if (g === 'denied') {
+      setGoogleToast('Google access was denied.');
+      window.history.replaceState({}, '', '/settings');
+      setTimeout(() => setGoogleToast(''), 4000);
+    } else if (g === 'error') {
+      setGoogleToast('Something went wrong connecting Google. Try again.');
+      window.history.replaceState({}, '', '/settings');
+      setTimeout(() => setGoogleToast(''), 4000);
+    }
   }, []);
 
   const updateSetting = async (key: string, value: unknown) => {
@@ -166,6 +185,18 @@ export default function SettingsPage() {
   return (
     <div style={{ padding: '0 18px' }}>
       <PageHeader title="Settings" subtitle="Connections & preferences" />
+
+      {/* Google connect toast */}
+      {googleToast && (
+        <div style={{
+          padding: '12px 16px', marginBottom: 12, borderRadius: 12, fontSize: 13, fontWeight: 500,
+          background: googleToast.includes('connected') ? T.green + '15' : 'rgba(229,77,77,0.08)',
+          border: `1px solid ${googleToast.includes('connected') ? T.green + '30' : 'rgba(229,77,77,0.2)'}`,
+          color: googleToast.includes('connected') ? T.green : T.red,
+        }}>
+          {googleToast.includes('connected') ? '✅ ' : '⚠️ '}{googleToast}
+        </div>
+      )}
 
       {/* Connections */}
       <div style={{
@@ -201,6 +232,40 @@ export default function SettingsPage() {
           </div>
         ))}
       </div>
+
+      {/* Connect Google — shown only if Google tokens are missing */}
+      {!conns.google && (
+        <div style={{
+          background: T.card, border: `1px solid rgba(74,110,245,0.25)`, borderRadius: 14,
+          padding: 18, marginBottom: 12,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.blue, marginBottom: 8 }}>
+            Connect Google Calendar &amp; Gmail
+          </div>
+          <div style={{ fontSize: 12, color: T.textSoft, fontWeight: 300, marginBottom: 14, lineHeight: 1.6 }}>
+            Grant access to your Google Calendar and Gmail so AI Daily can build your schedule and surface important emails.
+          </div>
+          <a href="/api/auth/google-connect" style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            padding: '13px 0', borderRadius: 12, textDecoration: 'none',
+            background: `linear-gradient(135deg,${T.tealDk},${T.teal})`,
+            color: '#fff', fontSize: 14, fontWeight: 600,
+            boxShadow: `0 4px 16px ${T.tealGlow}`,
+          }}>
+            <svg width="18" height="18" viewBox="0 0 48 48">
+              <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.9 33.6 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 5.7 29.2 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.2-2.7-.4-3.9z"/>
+              <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.4 18.8 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 5.7 29.2 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+              <path fill="#4CAF50" d="M24 44c5 0 9.6-1.6 13.2-4.4l-6.1-5.2C29 36 26.6 36.7 24 36.7c-5.4 0-9.9-3.4-11.5-8.2l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+              <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.1 5.2C36.9 39.2 44 34 44 24c0-1.3-.2-2.7-.4-3.9z"/>
+            </svg>
+            Connect Google
+          </a>
+          <div style={{ fontSize: 11, color: T.textMuted, marginTop: 10, lineHeight: 1.5 }}>
+            You&apos;ll be redirected to Google to approve access. You can revoke it anytime from your{' '}
+            <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener" style={{ color: T.teal }}>Google Account settings</a>.
+          </div>
+        </div>
+      )}
 
       {/* Canvas token entry (if not connected) */}
       {!conns.canvas && (
