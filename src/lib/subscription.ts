@@ -2,6 +2,7 @@ import { supabaseAdmin } from './supabase';
 
 export interface SubscriptionState {
   isPremiun: boolean;
+  isAdmin: boolean;
   inTrial: boolean;
   trialExpired: boolean;
   trialDaysLeft: number;
@@ -15,9 +16,25 @@ export interface SubscriptionState {
 export async function getUserSubscription(userId: string): Promise<SubscriptionState> {
   const { data } = await supabaseAdmin
     .from('users')
-    .select('is_premium, trial_ends_at, subscription_end, payment_failed, stripe_customer_id, stripe_subscription_id')
+    .select('is_admin, is_premium, trial_ends_at, subscription_end, payment_failed, stripe_customer_id, stripe_subscription_id')
     .eq('id', userId)
     .single();
+
+  // Admins always have unlimited free access
+  if (data?.is_admin === true) {
+    return {
+      isPremiun: true,
+      isAdmin: true,
+      inTrial: false,
+      trialExpired: false,
+      trialDaysLeft: 0,
+      subscriptionEnd: null,
+      paymentFailed: false,
+      hasAccess: true,
+      stripeCustomerId: data?.stripe_customer_id ?? null,
+      stripeSubscriptionId: data?.stripe_subscription_id ?? null,
+    };
+  }
 
   const now = Date.now();
   const isPremium = data?.is_premium === true;
@@ -33,6 +50,7 @@ export async function getUserSubscription(userId: string): Promise<SubscriptionS
 
   return {
     isPremiun: isPremium,
+    isAdmin: false,
     inTrial,
     trialExpired,
     trialDaysLeft,

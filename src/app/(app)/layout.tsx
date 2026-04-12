@@ -29,8 +29,8 @@ function SubscriptionGuard({ children }: { children: React.ReactNode }) {
           router.replace('/paywall');
           return;
         }
-        if (sub.inTrial) setTrialDaysLeft(sub.trialDaysLeft);
-        if (sub.paymentFailed) setPaymentFailed(true);
+        if (sub.inTrial && !sub.isAdmin) setTrialDaysLeft(sub.trialDaysLeft);
+        if (sub.paymentFailed && !sub.isAdmin) setPaymentFailed(true);
       })
       .catch(() => {}); // fail open — don't block access on network error
   }, [pathname, router, searchParams]);

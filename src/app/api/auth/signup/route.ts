@@ -22,19 +22,24 @@ export async function POST(req: Request) {
     // Check if email already exists
     const { data: existing } = await supabaseAdmin
       .from('users')
-      .select('id, password_hash')
+      .select('id, password_hash, google_access_token')
       .eq('email', email.toLowerCase())
       .single();
+
+    const hash = await bcrypt.hash(password, 12);
 
     if (existing) {
       if (existing.password_hash) {
         return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
       }
-      // Google user trying to add password — not allowed, direct them to Google
-      return NextResponse.json({ error: 'This email is linked to a Google account. Please sign in with Google.' }, { status: 409 });
+      if (existing.google_access_token) {
+        // Google-only user — direct them to Google sign-in
+        return NextResponse.json({ error: 'This email is linked to a Google account. Please sign in with Google.' }, { status: 409 });
+      }
+      // Pre-inserted user (e.g. admin seeded without password) — just set the hash
+      await supabaseAdmin.from('users').update({ password_hash: hash }).eq('id', existing.id);
+      return NextResponse.json({ ok: true });
     }
-
-    const hash = await bcrypt.hash(password, 12);
 
     // Create user + seed defaults
     const userId = await getOrCreateUser(email.toLowerCase(), name?.trim() || undefined);
