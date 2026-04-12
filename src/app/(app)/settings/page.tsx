@@ -136,6 +136,10 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [conns, setConns] = useState({ google: true, gmail: true, canvas: false });
   const [googleToast, setGoogleToast] = useState('');
+  const [activeTab, setActiveTab] = useState<'general' | 'premium'>('general');
+  const [sub, setSub] = useState<{ isPremiun?: boolean; inTrial?: boolean; trialDaysLeft?: number; subscriptionEnd?: string | null } | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
     fetch('/api/settings')
@@ -153,6 +157,8 @@ export default function SettingsPage() {
         });
       })
       .catch(() => {});
+
+    fetch('/api/subscription').then((r) => r.json()).then(setSub).catch(() => {});
 
     // Check if we just came back from Google OAuth connect
     const params = new URLSearchParams(window.location.search);
@@ -182,9 +188,114 @@ export default function SettingsPage() {
     });
   };
 
+  const handleCheckout = async () => {
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+      const { url } = await res.json();
+      if (url) window.location.href = url;
+    } catch { setCheckoutLoading(false); }
+  };
+
+  const handlePortal = async () => {
+    setPortalLoading(true);
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' });
+      const { url } = await res.json();
+      if (url) window.location.href = url;
+    } catch { setPortalLoading(false); }
+  };
+
   return (
     <div style={{ padding: '0 18px' }}>
       <PageHeader title="Settings" subtitle="Connections & preferences" />
+
+      {/* Tab switcher */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: 'rgba(0,0,0,0.05)', borderRadius: 12, padding: 3 }}>
+        {([['general', 'General'], ['premium', '✦ Premium']] as const).map(([key, label]) => (
+          <button key={key} onClick={() => setActiveTab(key)} style={{
+            flex: 1, padding: '8px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
+            fontSize: 13, fontWeight: 600,
+            background: activeTab === key ? 'white' : 'transparent',
+            color: activeTab === key ? (key === 'premium' ? '#7c3aed' : T.text) : T.textMuted,
+            boxShadow: activeTab === key ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+            transition: 'all 0.15s',
+          }}>{label}</button>
+        ))}
+      </div>
+
+      {/* ── Premium tab ── */}
+      {activeTab === 'premium' && (
+        <div>
+          <div style={{ background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 16, padding: 20, marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7c3aed', marginBottom: 6 }}>
+              AI Daily Premium
+            </div>
+            {sub?.isPremiun ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <span style={{ fontSize: 18 }}>✦</span>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1510' }}>Active subscription</div>
+                    {sub.subscriptionEnd && (
+                      <div style={{ fontSize: 12, color: '#6b6358' }}>
+                        Renews {new Date(sub.subscriptionEnd).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <button onClick={handlePortal} disabled={portalLoading} style={{
+                  width: '100%', padding: '11px 0', borderRadius: 10, border: '1px solid rgba(124,58,237,0.3)',
+                  background: 'transparent', color: '#7c3aed', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}>
+                  {portalLoading ? 'Opening...' : 'Manage subscription'}
+                </button>
+              </>
+            ) : sub?.inTrial ? (
+              <>
+                <div style={{ fontSize: 14, color: '#3d3530', marginBottom: 12 }}>
+                  <strong>{sub.trialDaysLeft} day{sub.trialDaysLeft === 1 ? '' : 's'}</strong> left in your free trial.
+                </div>
+                <div style={{ fontSize: 12, color: '#6b6358', marginBottom: 16, lineHeight: 1.6 }}>
+                  $16.99/month after trial ends. Cancel anytime.
+                </div>
+                <button onClick={handleCheckout} disabled={checkoutLoading} style={{
+                  width: '100%', padding: '13px 0', borderRadius: 12, border: 'none',
+                  background: checkoutLoading ? 'rgba(124,58,237,0.4)' : 'linear-gradient(135deg,#9b5cf6,#7c3aed)',
+                  color: '#fff', fontSize: 14, fontWeight: 700, cursor: checkoutLoading ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 16px rgba(124,58,237,0.3)',
+                }}>
+                  {checkoutLoading ? 'Redirecting...' : 'Subscribe — $16.99/month'}
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 14, color: '#c0392b', marginBottom: 12 }}>Your trial has ended.</div>
+                <button onClick={handleCheckout} disabled={checkoutLoading} style={{
+                  width: '100%', padding: '13px 0', borderRadius: 12, border: 'none',
+                  background: checkoutLoading ? 'rgba(124,58,237,0.4)' : 'linear-gradient(135deg,#9b5cf6,#7c3aed)',
+                  color: '#fff', fontSize: 14, fontWeight: 700, cursor: checkoutLoading ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 16px rgba(124,58,237,0.3)',
+                }}>
+                  {checkoutLoading ? 'Redirecting...' : 'Start for $16.99/month'}
+                </button>
+              </>
+            )}
+          </div>
+
+          <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: T.textMuted, marginBottom: 10 }}>What&apos;s included</div>
+            {['AI-generated daily schedule', 'Google Calendar + Gmail real-time sync', 'Canvas deadlines + announcements', 'Cross-referenced intelligence alerts', '5-layer intelligence engine', 'Streaming AI chief of staff'].map((f) => (
+              <div key={f} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${T.border}`, fontSize: 12, color: T.text }}>
+                <span style={{ color: '#7c3aed' }}>✓</span> {f}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── General tab ── */}
+      {activeTab === 'general' && (<>
 
       {/* Google connect toast */}
       {googleToast && (
@@ -471,6 +582,7 @@ export default function SettingsPage() {
         }}>
         Delete account and all data
       </button>
+      </>)}
     </div>
   );
 }

@@ -21,9 +21,10 @@ export async function getOrCreateUser(email: string, name?: string, image?: stri
   }
 
   const isAdmin = email === process.env.ADMIN_EMAIL;
+  const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const { data: newUser, error } = await supabaseAdmin
     .from('users')
-    .insert({ email, name, avatar_url: image, is_admin: isAdmin })
+    .insert({ email, name, avatar_url: image, is_admin: isAdmin, trial_ends_at: trialEndsAt })
     .select('id')
     .single();
 

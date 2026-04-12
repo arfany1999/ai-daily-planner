@@ -1,12 +1,73 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import Nav from '@/components/Nav';
 import BottomNav from '@/components/BottomNav';
 import AiBar from '@/components/AiBar';
 import Sidebar from '@/components/Sidebar';
+import TrialBanner from '@/components/TrialBanner';
+
+function SubscriptionGuard({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
+  const [paymentFailed, setPaymentFailed] = useState(false);
+
+  useEffect(() => {
+    // If just subscribed, skip check briefly to allow webhook to process
+    if (searchParams.get('subscribed') === '1') {
+      setTrialDaysLeft(30);
+      return;
+    }
+
+    fetch('/api/subscription')
+      .then((r) => r.json())
+      .then((sub) => {
+        if (!sub.hasAccess) {
+          router.replace('/paywall');
+          return;
+        }
+        if (sub.inTrial) setTrialDaysLeft(sub.trialDaysLeft);
+        if (sub.paymentFailed) setPaymentFailed(true);
+      })
+      .catch(() => {}); // fail open — don't block access on network error
+  }, [pathname, router, searchParams]);
+
+  return (
+    <>
+      {trialDaysLeft !== null && trialDaysLeft <= 7 && (
+        <TrialBanner daysLeft={trialDaysLeft} />
+      )}
+      {paymentFailed && (
+        <div style={{
+          background: 'rgba(229,77,77,0.08)',
+          borderBottom: '1px solid rgba(229,77,77,0.15)',
+          padding: '8px 20px',
+          fontSize: 12,
+          color: '#c0392b',
+          textAlign: 'center',
+        }}>
+          Your last payment failed.{' '}
+          <button
+            onClick={async () => {
+              const res = await fetch('/api/stripe/portal', { method: 'POST' });
+              const { url } = await res.json();
+              if (url) window.location.href = url;
+            }}
+            style={{ background: 'none', border: 'none', color: '#e54d4d', fontWeight: 600, cursor: 'pointer', fontSize: 12, textDecoration: 'underline', padding: 0 }}
+          >
+            Update payment method
+          </button>
+        </div>
+      )}
+      {children}
+    </>
+  );
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  // Restore dark mode preference
   useEffect(() => {
     try {
       if (localStorage.getItem('ai-planner-dark') === '1') document.body.classList.add('dark');
@@ -15,23 +76,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f3ede1', display: 'flex' }}>
-      {/* Desktop sidebar — hidden on mobile via CSS */}
       <Sidebar />
-
-      {/* Main area */}
       <div className="app-main-inner">
-        {/* Top nav — hidden on desktop via CSS */}
         <div className="top-nav-mobile-only">
           <Nav />
         </div>
 
-        <main className="app-main-content" style={{ paddingBottom: 120 }}>
-          {children}
-        </main>
+        <Suspense fallback={null}>
+          <SubscriptionGuard>
+            <main className="app-main-content" style={{ paddingBottom: 120 }}>
+              {children}
+            </main>
+          </SubscriptionGuard>
+        </Suspense>
 
         <AiBar />
 
-        {/* Bottom nav — hidden on desktop via CSS */}
         <div className="bottom-nav-wrapper">
           <BottomNav />
         </div>
