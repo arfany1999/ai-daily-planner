@@ -7,12 +7,12 @@ import Link from 'next/link';
 import { T } from '@/lib/theme';
 
 const features = [
-  { icon: '📅', title: 'Smart Weekly Briefings', desc: 'AI generates a rolling 7-day plan from your Google Calendar, Gmail, and university data.' },
-  { icon: '📋', title: "Tomorrow's To-Do", desc: 'Hour-by-hour schedule with time estimates, 30-min buffers, and automatic carry-forward.' },
-  { icon: '🎓', title: 'Canvas Integration', desc: 'Auto-detects new assignments, announcements, and lecture uploads from RMIT Canvas.' },
-  { icon: '📚', title: 'AI Study Materials', desc: 'Generates MCQs, flashcards, and notes from your lecture PDFs and YouTube videos.' },
-  { icon: '🤖', title: 'Ask AI Anything', desc: 'Chat with AI that has live access to all your data — schedule events, quiz yourself, get answers.' },
-  { icon: '🔌', title: 'Custom Connections', desc: 'Connect any website, RSS feed, or API. Track crypto, jobs, news — each gets its own card.' },
+  { icon: '🎓', title: 'Reads your Canvas', desc: 'Assignments, announcements, deadlines — pulled automatically from your university Canvas.' },
+  { icon: '📅', title: 'Syncs Calendar & Gmail', desc: 'Classes, shifts, professor emails — tagged and linked by course, updated in real time.' },
+  { icon: '🚨', title: 'Flags what you missed', desc: 'Quiz on Canvas but not calendared? No study block before a deadline? You\'ll know.' },
+  { icon: '🌅', title: 'Builds your day', desc: 'Every morning — prioritised, time-blocked, ready before you open the app.' },
+  { icon: '📚', title: 'Study materials from lectures', desc: 'Turns your lecture files into flashcards and MCQs — tagged to the right course and week.' },
+  { icon: '🤖', title: 'Ask it anything', desc: 'It reasons across every source and tells you what to do next.' },
 ];
 
 export default function LandingPage() {
@@ -46,11 +46,13 @@ export default function LandingPage() {
       {/* Hero */}
       <div style={{ textAlign: 'center', padding: '80px 24px 60px', maxWidth: 700, margin: '0 auto', position: 'relative' }}>
         <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 400, height: 400, borderRadius: '50%', background: `radial-gradient(circle, ${T.teal}10, transparent 70%)`, pointerEvents: 'none' }} />
-        <div style={{ fontSize: 48, fontWeight: 700, letterSpacing: '-1.5px', lineHeight: 1.1, marginBottom: 16, background: `linear-gradient(135deg, ${T.teal}, ${T.blue})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          Your AI-powered<br />daily planner
+        <div style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-1.5px', lineHeight: 1.15, marginBottom: 16, background: `linear-gradient(135deg, ${T.teal}, ${T.blue})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          Stop surviving university.<br />Start running it.
         </div>
-        <div style={{ fontSize: 18, color: T.textSoft, fontWeight: 300, lineHeight: 1.7, maxWidth: 520, margin: '0 auto 32px' }}>
-          Connects your Google Calendar, Gmail, and university Canvas into one intelligent dashboard. AI generates your weekly plan, study materials, and daily to-dos.
+        <div style={{ fontSize: 15, color: T.textSoft, fontWeight: 300, lineHeight: 1.8, maxWidth: 520, margin: '0 auto 32px' }}>
+          Canvas, Google Calendar, Gmail, lectures, work shifts — you&apos;re expected to hold it all together yourself.
+          <br /><br />
+          <span style={{ fontWeight: 500, color: T.text }}>AI Planner</span> is a 5-layered AI-powered system built for university students. It doesn&apos;t store your data. It thinks about it.
         </div>
         <Link href="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '14px 32px', background: `linear-gradient(135deg,${T.tealDk},${T.teal})`, color: '#fff', borderRadius: 12, fontSize: 16, fontWeight: 600, textDecoration: 'none', boxShadow: `0 4px 24px ${T.teal}30` }}>
           <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.9 33.6 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 5.7 29.2 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.2-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.4 18.8 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 5.7 29.2 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5 0 9.6-1.6 13.2-4.4l-6.1-5.2C29 36 26.6 36.7 24 36.7c-5.4 0-9.9-3.4-11.5-8.2l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.1 5.2C36.9 39.2 44 34 44 24c0-1.3-.2-2.7-.4-3.9z"/></svg>
@@ -75,10 +77,10 @@ export default function LandingPage() {
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '0 24px 60px', textAlign: 'center' }}>
         <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, letterSpacing: '-0.5px' }}>How it works</div>
         {[
-          { n: '1', t: 'Sign in with Google', d: 'One click. Calendar and Gmail connect automatically.' },
-          { n: '2', t: 'Connect Canvas (optional)', d: 'Paste your API token. AI auto-validates it.' },
-          { n: '3', t: 'Set your schedule', d: 'Work and gym days. Takes 30 seconds.' },
-          { n: '4', t: 'AI does the rest', d: 'Daily briefings, study materials, smart scheduling.' },
+          { n: '1', t: 'Sign in & connect', d: 'Google or email. Link your Calendar, Gmail, and Canvas in Settings.' },
+          { n: '2', t: 'AI ingests everything', d: 'Assignments, announcements, emails, events — pulled and cross-referenced automatically.' },
+          { n: '3', t: 'Gaps get flagged', d: 'Missing study blocks, uncalendared quizzes, deadline clashes — surfaced before they bite.' },
+          { n: '4', t: 'Your day is built', d: 'Every morning: prioritised, time-blocked, ready. Ask the AI anything about your week.' },
         ].map((s) => (
           <div key={s.n} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, textAlign: 'left', marginBottom: 8 }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg,${T.tealDk},${T.teal})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{s.n}</div>
