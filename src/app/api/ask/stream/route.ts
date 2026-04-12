@@ -103,9 +103,6 @@ FORMATTING:
 
 Today: ${todayDate} (${new Date().toLocaleDateString('en-AU', { weekday: 'long', timeZone: TIMEZONE })}) | ${nowLocal} AEST | Page: ${page_context || 'home'}`;
 
-Current page: ${page_context || 'home'}
-Today: ${todayDate} (${new Date().toLocaleDateString('en-AU', { weekday: 'long', timeZone: TIMEZONE })}) | Time: ${nowLocal} AEST`;
-
   // Build message history
   const messages: Anthropic.MessageParam[] = [];
   for (const m of (conversation || []).slice(-10)) {
