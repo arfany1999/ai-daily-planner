@@ -1,8 +1,43 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { T } from '@/lib/theme';
+
+/** Lightweight markdown → React: handles **bold**, *italic*, `code`, - bullets */
+function formatMessage(text: string): ReactNode {
+  const lines = text.split('\n');
+  const elements: ReactNode[] = [];
+
+  for (let li = 0; li < lines.length; li++) {
+    let line = lines[li];
+    const isBullet = /^[\s]*[-•]\s/.test(line);
+    if (isBullet) line = line.replace(/^[\s]*[-•]\s/, '');
+
+    // Inline formatting: **bold**, *italic*, `code`
+    const parts: ReactNode[] = [];
+    const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+    let lastIdx = 0;
+    let match;
+    while ((match = regex.exec(line)) !== null) {
+      if (match.index > lastIdx) parts.push(line.slice(lastIdx, match.index));
+      if (match[2]) parts.push(<strong key={`${li}-b-${match.index}`} style={{ fontWeight: 600 }}>{match[2]}</strong>);
+      else if (match[3]) parts.push(<em key={`${li}-i-${match.index}`}>{match[3]}</em>);
+      else if (match[4]) parts.push(<code key={`${li}-c-${match.index}`} style={{ background: 'var(--surface-hover)', padding: '1px 5px', borderRadius: 4, fontSize: '0.9em' }}>{match[4]}</code>);
+      lastIdx = match.index + match[0].length;
+    }
+    if (lastIdx < line.length) parts.push(line.slice(lastIdx));
+    if (parts.length === 0) parts.push('');
+
+    if (isBullet) {
+      elements.push(<div key={`l-${li}`} style={{ display: 'flex', gap: 6, marginTop: 2 }}><span style={{ flexShrink: 0, opacity: 0.5 }}>•</span><span>{parts}</span></div>);
+    } else {
+      if (li > 0) elements.push(<br key={`br-${li}`} />);
+      elements.push(<span key={`l-${li}`}>{parts}</span>);
+    }
+  }
+  return <>{elements}</>;
+}
 
 interface Action {
   type: string;
@@ -299,7 +334,7 @@ export default function AiBar() {
                       : 'var(--surface)',
                     color: m.role === 'user' ? '#fff' : T.text,
                     fontSize: 13, lineHeight: 1.65,
-                    whiteSpace: 'pre-wrap',
+                    whiteSpace: m.role === 'user' ? 'pre-wrap' : 'normal',
                     boxShadow: m.role === 'user'
                       ? `0 3px 12px ${T.tealGlow}`
                       : 'var(--shadow-sm)',
@@ -308,15 +343,14 @@ export default function AiBar() {
                     display: 'flex', alignItems: isLastStreaming && m.content === '' ? 'center' : 'flex-start',
                   }}>
                     {m.content === '' && isLastStreaming ? (
-                      // Thinking dots before first token arrives
                       <span className="ai-thinking">
                         <span /><span /><span />
                       </span>
                     ) : (
-                      <>
-                        {m.content}
+                      <span>
+                        {m.role === 'assistant' ? formatMessage(m.content) : m.content}
                         {isLastStreaming && <span className="ai-cursor" />}
-                      </>
+                      </span>
                     )}
                   </div>
                 </div>
