@@ -57,6 +57,7 @@ export default function LandingPage() {
           Get started with Google
         </Link>
         <div style={{ fontSize: 12, color: T.textMuted, marginTop: 12, fontWeight: 300 }}>Free to use. No credit card required.</div>
+        <div style={{ fontSize: 11, color: T.textMuted, marginTop: 6, fontWeight: 400, opacity: 0.7 }}>Built by Hamidreza Arfany</div>
       </div>
 
       {/* Features */}
