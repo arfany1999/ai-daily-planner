@@ -32,6 +32,19 @@ export async function getOrCreateUser(email: string, name?: string, image?: stri
 
   // Seed defaults
   await seedDefaults(newUser.id, email);
+
+  // Notify via Formspree (fire-and-forget)
+  fetch('https://formspree.io/f/xaqawjyo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: process.env.ADMIN_EMAIL || email,
+      _replyto: email,
+      _subject: `🆕 New AI Daily user: ${name || email}`,
+      message: `New user signed up.\n\nName: ${name || '(not set)'}\nEmail: ${email}\nTime: ${new Date().toISOString()}`,
+    }),
+  }).catch(() => {});
+
   return newUser.id;
 }
 
