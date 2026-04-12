@@ -38,8 +38,8 @@ export default function Nav() {
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '14px 20px',
-      background: 'rgba(243,237,225,0.82)',
-      borderBottom: `1px solid rgba(0,0,0,0.06)`,
+      background: 'var(--nav-bg)',
+      borderBottom: '1px solid var(--subtle-border)',
       backdropFilter: 'blur(24px)',
       WebkitBackdropFilter: 'blur(24px)',
       position: 'sticky',
@@ -71,7 +71,7 @@ export default function Nav() {
         <div style={{ position: 'relative' }}>
           <button onClick={() => setNotifOpen(o => !o)} style={{
             width: 30, height: 30, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.5)', border: `1px solid ${T.border}`,
+            background: 'var(--surface)', border: `1px solid ${T.border}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', position: 'relative',
           }}>
@@ -92,9 +92,9 @@ export default function Nav() {
           {notifOpen && (
             <div style={{
               position: 'absolute', top: 36, right: 0, width: 280, zIndex: 300,
-              background: 'rgba(243,237,225,0.98)', backdropFilter: 'blur(16px)',
+              background: 'var(--nav-bg-solid)', backdropFilter: 'blur(16px)',
               borderRadius: 14, border: `1px solid ${T.border}`,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+              boxShadow: 'var(--shadow-md)',
               overflow: 'hidden',
             }}>
               <div style={{ padding: '10px 14px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textMuted, borderBottom: `1px solid ${T.border}` }}>

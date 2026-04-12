@@ -8,32 +8,50 @@ import AiBar from '@/components/AiBar';
 import Sidebar from '@/components/Sidebar';
 import TrialBanner from '@/components/TrialBanner';
 
+let subCache: { data: Record<string, unknown>; ts: number } | null = null;
+const SUB_TTL = 5 * 60 * 1000; // cache for 5 minutes
+
 function SubscriptionGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   const [paymentFailed, setPaymentFailed] = useState(false);
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
+    if (checked) return;
+
     // If just subscribed, skip check briefly to allow webhook to process
     if (searchParams.get('subscribed') === '1') {
       setTrialDaysLeft(30);
+      setChecked(true);
+      return;
+    }
+
+    // Use cached result if fresh
+    if (subCache && Date.now() - subCache.ts < SUB_TTL) {
+      const sub = subCache.data;
+      if (!sub.hasAccess) { router.replace('/paywall'); return; }
+      if (sub.inTrial && !sub.isAdmin) setTrialDaysLeft(sub.trialDaysLeft as number);
+      if (sub.paymentFailed && !sub.isAdmin) setPaymentFailed(true);
+      setChecked(true);
       return;
     }
 
     fetch('/api/subscription')
       .then((r) => r.json())
       .then((sub) => {
+        subCache = { data: sub, ts: Date.now() };
         if (!sub.hasAccess) {
           router.replace('/paywall');
           return;
         }
         if (sub.inTrial && !sub.isAdmin) setTrialDaysLeft(sub.trialDaysLeft);
         if (sub.paymentFailed && !sub.isAdmin) setPaymentFailed(true);
+        setChecked(true);
       })
-      .catch(() => {}); // fail open — don't block access on network error
-  }, [pathname, router, searchParams]);
+      .catch(() => { setChecked(true); }); // fail open
+  }, [checked, router, searchParams]);
 
   return (
     <>
@@ -75,7 +93,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f3ede1', display: 'flex' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex' }}>
       <Sidebar />
       <div className="app-main-inner">
         <div className="top-nav-mobile-only">

@@ -27,6 +27,17 @@
   --yellow: #d4920a;
   --glass: rgba(255,255,255,0.52);
   --glass-brd: rgba(255,255,255,0.75);
+  --surface: rgba(255,255,255,0.58);
+  --surface-hover: rgba(0,0,0,0.04);
+  --surface-input: rgba(255,255,255,0.65);
+  --nav-bg: rgba(243,237,225,0.82);
+  --nav-bg-solid: rgba(243,237,225,0.98);
+  --bottom-nav-bg: rgba(243,237,225,0.88);
+  --ai-bar-bg: rgba(243,237,225,0.96);
+  --subtle-border: rgba(0,0,0,0.06);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-md: 0 8px 32px rgba(0,0,0,0.08);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.1);
 }
 
 /* box-sizing already set in reset above */
@@ -135,8 +146,8 @@ input, textarea, button {
     position: fixed;
     top: 0; left: 0; bottom: 0;
     width: 220px;
-    background: rgba(238,232,218,0.97);
-    border-right: 1px solid rgba(0,0,0,0.07);
+    background: var(--nav-bg-solid);
+    border-right: 1px solid var(--subtle-border);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     z-index: 100;
@@ -217,7 +228,7 @@ input, textarea, button {
     flex-shrink: 0;
     border-right: 1px solid rgba(0,0,0,0.07);
     overflow-y: auto;
-    background: rgba(238,232,218,0.7);
+    background: var(--nav-bg);
   }
 }
 
@@ -233,16 +244,32 @@ input, textarea, button {
 
 /* ── Dark mode ── */
 body.dark {
-  --bg: #1a1a1f;
-  --bg2: #22222a;
-  --bg3: #2a2a35;
-  --card: #252530;
+  --bg: #131316;
+  --bg2: #1a1a20;
+  --bg3: #222228;
+  --card: #1e1e25;
   --border: rgba(255,255,255,0.08);
-  --text: #f0eee8;
-  --text-soft: #a09888;
+  --text: #e8e6e1;
+  --text-soft: #9a9488;
   --text-muted: #6b6558;
-  --glass: rgba(30,30,40,0.7);
-  --glass-brd: rgba(255,255,255,0.1);
+  --teal: #5b7fff;
+  --teal-dk: #4a6ef5;
+  --teal-glow: rgba(91,127,255,0.12);
+  --teal-brd: rgba(91,127,255,0.25);
+  --glass: rgba(20,20,28,0.78);
+  --glass-brd: rgba(255,255,255,0.08);
+  --surface: rgba(30,30,40,0.6);
+  --surface-hover: rgba(255,255,255,0.06);
+  --surface-input: rgba(30,30,40,0.65);
+  --nav-bg: rgba(19,19,22,0.88);
+  --nav-bg-solid: rgba(19,19,22,0.98);
+  --bottom-nav-bg: rgba(19,19,22,0.92);
+  --ai-bar-bg: rgba(19,19,22,0.96);
+  --subtle-border: rgba(255,255,255,0.06);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.2);
+  --shadow-md: 0 8px 32px rgba(0,0,0,0.3);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.4);
+  color-scheme: dark;
 }
 body.dark input, body.dark textarea {
   background: var(--bg3);
@@ -251,6 +278,78 @@ body.dark input, body.dark textarea {
 }
 body.dark button {
   color: var(--text);
+}
+body.dark ::selection {
+  background: rgba(91,127,255,0.3);
+  color: #e8e6e1;
+}
+body.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+}
+body.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.22);
+}
+body.dark .app-sidebar {
+  background: rgba(20,20,28,0.97);
+  border-color: rgba(255,255,255,0.06);
+}
+body.dark .card-lift:hover {
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+body.dark img {
+  filter: brightness(0.92);
+}
+
+/* ── Dark mode overrides for inline styles ── */
+/* These catch rgba(255,255,255,...) and rgba(0,0,0,...) patterns in inline styles */
+body.dark [style*="rgba(255,255,255"] {
+  --tw-bg-opacity: 1;
+}
+body.dark [style*="rgba(243,237,225"] {
+  --tw-bg-opacity: 1;
+}
+
+/* Home page cards, all containers with white glass backgrounds */
+body.dark .app-main-content [style*="background: rgba(255,255,255"] {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+body.dark .app-main-content [style*="background: linear-gradient(135deg, rgba(74"] {
+  background: var(--surface) !important;
+}
+body.dark .app-main-content [style*="background: linear-gradient(135deg, rgba(240"] {
+  background: var(--surface) !important;
+}
+/* Boxes with white-ish inset shadows */
+body.dark .app-main-content [style*="inset 0 1px 0 rgba(255"] {
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3) !important;
+}
+/* Fix dark text on dark bg — brighten muted/soft text in dark mode */
+body.dark [style*="color: #1a1510"] {
+  color: var(--text) !important;
+}
+body.dark [style*="color: #6b5e4e"],
+body.dark [style*="color: #6b6358"],
+body.dark [style*="color: #3d3530"] {
+  color: var(--text-soft) !important;
+}
+body.dark [style*="color: #a09880"] {
+  color: var(--text-muted) !important;
+}
+/* Fix avatar borders in dark mode */
+body.dark [style*="border: 2.5px solid rgba(255,255,255"],
+body.dark [style*="border: 2px solid rgba(255,255,255"] {
+  border-color: rgba(255,255,255,0.15) !important;
+}
+/* Dashed borders */
+body.dark [style*="dashed rgba(0,0,0"] {
+  border-color: rgba(255,255,255,0.12) !important;
+}
+/* Search/button surfaces */
+body.dark [style*="background: rgba(0,0,0,0.05"],
+body.dark [style*="background: rgba(0,0,0,0.04"],
+body.dark [style*="background: rgba(0,0,0,0.06"] {
+  background: rgba(255,255,255,0.06) !important;
 }
 
 /* ── AI streaming animations ─────────────────────────────────────────────── */

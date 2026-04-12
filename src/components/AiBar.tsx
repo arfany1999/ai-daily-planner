@@ -204,16 +204,16 @@ export default function AiBar() {
       {/* ── Chat panel ────────────────────────────────────────────────────── */}
       {open && (
         <div style={{
-          background: 'rgba(243,237,225,0.96)',
+          background: 'var(--ai-bar-bg)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
-          borderTop: '1px solid rgba(255,255,255,0.85)',
-          borderLeft: '1px solid rgba(255,255,255,0.85)',
-          borderRight: '1px solid rgba(255,255,255,0.85)',
+          borderTop: '1px solid var(--glass-brd)',
+          borderLeft: '1px solid var(--glass-brd)',
+          borderRight: '1px solid var(--glass-brd)',
           borderRadius: '16px 16px 0 0',
           maxHeight: '56vh', overflowY: 'auto',
           padding: '14px 14px 8px',
-          boxShadow: '0 -8px 40px rgba(0,0,0,0.1)',
+          boxShadow: 'var(--shadow-md)',
         }}>
 
           {/* Header */}
@@ -235,7 +235,7 @@ export default function AiBar() {
               </span>
               <span style={{
                 fontSize: 9, color: T.textMuted,
-                background: 'rgba(0,0,0,0.06)', padding: '2px 7px', borderRadius: 5,
+                background: 'var(--surface-hover)', padding: '2px 7px', borderRadius: 5,
               }}>{pageContext}</span>
             </div>
             <button
@@ -243,7 +243,7 @@ export default function AiBar() {
               style={{
                 cursor: 'pointer', color: T.textMuted, fontSize: 14,
                 width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 8, background: 'rgba(0,0,0,0.05)', border: 'none',
+                borderRadius: 8, background: 'var(--surface-hover)', border: 'none',
               }}
             >✕</button>
           </div>
@@ -252,12 +252,12 @@ export default function AiBar() {
           {chat.length === 0 && (
             <div style={{
               padding: 14,
-              background: 'rgba(255,255,255,0.55)',
+              background: 'var(--surface)',
               backdropFilter: 'blur(8px)',
               borderRadius: 12,
-              border: '1px solid rgba(255,255,255,0.85)',
+              border: '1px solid var(--glass-brd)',
               marginBottom: 12,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              boxShadow: 'var(--shadow-sm)',
             }}>
               <div style={{ fontSize: 12, color: T.textSoft, lineHeight: 1.75, marginBottom: 10 }}>
                 I know your full schedule, Canvas deadlines, emails, and study load. Tell me what you need — I&apos;ll get straight to the point.
@@ -269,8 +269,8 @@ export default function AiBar() {
                     onClick={() => send(q)}
                     style={{
                       padding: '5px 12px',
-                      background: 'rgba(255,255,255,0.75)',
-                      border: '1px solid rgba(0,0,0,0.08)',
+                      background: 'var(--surface)',
+                      border: `1px solid ${T.border}`,
                       borderRadius: 20, fontSize: 11, color: T.textSoft, cursor: 'pointer',
                       fontWeight: 500, transition: 'background 0.15s',
                     }}
@@ -296,14 +296,14 @@ export default function AiBar() {
                     borderRadius: m.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                     background: m.role === 'user'
                       ? `linear-gradient(135deg,${T.tealDk},${T.teal})`
-                      : 'rgba(255,255,255,0.78)',
+                      : 'var(--surface)',
                     color: m.role === 'user' ? '#fff' : T.text,
                     fontSize: 13, lineHeight: 1.65,
                     whiteSpace: 'pre-wrap',
                     boxShadow: m.role === 'user'
                       ? `0 3px 12px ${T.tealGlow}`
-                      : '0 2px 8px rgba(0,0,0,0.06)',
-                    border: m.role === 'assistant' ? '1px solid rgba(255,255,255,0.9)' : 'none',
+                      : 'var(--shadow-sm)',
+                    border: m.role === 'assistant' ? `1px solid ${T.glassBrd}` : 'none',
                     minHeight: isLastStreaming && m.content === '' ? 38 : undefined,
                     display: 'flex', alignItems: isLastStreaming && m.content === '' ? 'center' : 'flex-start',
                   }}>
@@ -368,10 +368,10 @@ export default function AiBar() {
         background: 'rgba(243,237,225,0.96)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
-        borderTop: '1px solid rgba(0,0,0,0.07)',
+        borderTop: `1px solid var(--subtle-border)`,
         padding: '8px 12px',
         display: 'flex', gap: 8,
-        boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
+        boxShadow: 'var(--shadow-sm)',
       }}>
         <input
           ref={inputRef}
@@ -383,8 +383,8 @@ export default function AiBar() {
           disabled={loading}
           style={{
             flex: 1, padding: '11px 16px',
-            background: 'rgba(255,255,255,0.65)',
-            border: `1.5px solid ${msg ? T.tealBrd : 'rgba(0,0,0,0.08)'}`,
+            background: 'var(--surface-input)',
+            border: `1.5px solid ${msg ? T.tealBrd : T.border}`,
             borderRadius: 12, color: T.text, fontSize: 13, outline: 'none',
             opacity: loading ? 0.7 : 1,
             transition: 'border-color 0.2s, box-shadow 0.2s',
@@ -398,7 +398,7 @@ export default function AiBar() {
             padding: '11px 18px',
             background: msg.trim() && !loading
               ? `linear-gradient(135deg,${T.tealDk},${T.teal})`
-              : 'rgba(0,0,0,0.07)',
+              : 'var(--surface-hover)',
             color: msg.trim() && !loading ? '#fff' : T.textMuted,
             border: 'none', borderRadius: 12,
             fontSize: 13, fontWeight: 600,

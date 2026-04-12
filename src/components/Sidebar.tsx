@@ -93,7 +93,7 @@ export default function Sidebar() {
       <Link href="/home" style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '22px 20px 18px', textDecoration: 'none',
-        borderBottom: '1px solid rgba(0,0,0,0.06)',
+        borderBottom: '1px solid var(--subtle-border)',
       }}>
         <div style={{
           width: 32, height: 32, borderRadius: 10,
@@ -117,7 +117,7 @@ export default function Sidebar() {
               background: active ? T.teal + '14' : 'transparent',
               transition: 'background 0.15s',
             }}
-            onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
+            onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--surface-hover)'; }}
             onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
             >
               {icon(active)}
@@ -140,7 +140,7 @@ export default function Sidebar() {
       {/* User footer */}
       <div style={{
         padding: '14px 16px',
-        borderTop: '1px solid rgba(0,0,0,0.06)',
+        borderTop: '1px solid var(--subtle-border)',
         display: 'flex', alignItems: 'center', gap: 10,
       }}>
         <div style={{
