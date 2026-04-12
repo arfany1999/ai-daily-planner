@@ -85,8 +85,8 @@ function LoginContent() {
           </div>
         </div>
 
-        <div style={{ fontSize: 26, fontWeight: 700, color: T.text, letterSpacing: '-0.8px', marginBottom: 4 }}>AI Daily</div>
-        <div style={{ fontSize: 13, color: T.textMuted, marginBottom: 28 }}>Your intelligent daily planner</div>
+        <div style={{ fontSize: 26, fontWeight: 700, color: T.text, letterSpacing: '-0.8px', marginBottom: 4 }}>AI Planner</div>
+        <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 28, lineHeight: 1.6 }}>5 layers of AI that <strong style={{ fontWeight: 600, color: T.text }}>think</strong> about your university data</div>
 
         {/* Tab switcher */}
         <div style={{ display: 'flex', background: 'rgba(0,0,0,0.05)', borderRadius: 12, padding: 3, marginBottom: 24, gap: 2 }}>
@@ -153,7 +153,7 @@ function LoginContent() {
               Sign in with Google
             </button>
             <div style={{ marginTop: 14, padding: '9px 12px', borderRadius: 10, background: 'rgba(74,110,245,0.06)', border: '1px solid rgba(74,110,245,0.15)', fontSize: 11, color: T.textSoft, lineHeight: 1.6, textAlign: 'left' }}>
-              <strong style={{ color: T.teal }}>Tip:</strong> After signing in, connect your Calendar &amp; Gmail from <strong>Settings</strong> to unlock full features.
+              <strong style={{ color: T.teal }}>Next step:</strong> Connect <strong>Calendar</strong>, <strong>Gmail</strong>, and <strong>Canvas</strong> from Settings to activate all 5 layers.
             </div>
           </>
         )}
@@ -210,7 +210,7 @@ function LoginContent() {
             )}
 
             <div style={{ padding: '9px 12px', borderRadius: 10, background: 'rgba(232,123,53,0.06)', border: '1px solid rgba(232,123,53,0.15)', fontSize: 11, color: T.textSoft, lineHeight: 1.6 }}>
-              <strong style={{ color: '#e87b35' }}>Note:</strong> After signing in, connect Calendar &amp; Gmail from <strong>Settings</strong> to unlock full features.
+              <strong style={{ color: '#e87b35' }}>Next step:</strong> Connect <strong>Calendar</strong>, <strong>Gmail</strong>, and <strong>Canvas</strong> from Settings to activate all 5 layers.
             </div>
           </form>
         )}
