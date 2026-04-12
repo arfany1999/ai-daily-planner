@@ -47,13 +47,15 @@ export default function Nav() {
       zIndex: 50,
     }}>
       <Link href="/home" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none' }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: 8,
-          background: `linear-gradient(135deg,${T.tealDk},${T.teal})`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, fontWeight: 700, color: '#fff',
-          boxShadow: `0 3px 10px ${T.tealGlow}`,
-        }}>A</div>
+        <img
+          src="/icons/icon-source.jpg"
+          alt="AI Daily"
+          style={{
+            width: 28, height: 28, borderRadius: 8,
+            objectFit: 'cover',
+            boxShadow: `0 3px 10px ${T.tealGlow}`,
+          }}
+        />
         <span style={{ fontSize: 17, fontWeight: 700, color: T.text, letterSpacing: '-0.5px' }}>AI Planner</span>
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -117,13 +119,26 @@ export default function Nav() {
           )}
         </div>
 
-        <div style={{
-          width: 30, height: 30, borderRadius: '50%',
-          background: `linear-gradient(135deg,${T.tealDk},${T.teal})`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, fontWeight: 600, color: '#fff',
-          boxShadow: `0 2px 8px ${T.tealGlow}`,
-        }}>{initial}</div>
+        {session?.user?.image ? (
+          <img
+            src={session.user.image}
+            alt={initial}
+            style={{
+              width: 30, height: 30, borderRadius: '50%',
+              objectFit: 'cover',
+              border: '2px solid rgba(255,255,255,0.8)',
+              boxShadow: `0 2px 8px ${T.tealGlow}`,
+            }}
+          />
+        ) : (
+          <div style={{
+            width: 30, height: 30, borderRadius: '50%',
+            background: `linear-gradient(135deg,${T.tealDk},${T.teal})`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 12, fontWeight: 600, color: '#fff',
+            boxShadow: `0 2px 8px ${T.tealGlow}`,
+          }}>{initial}</div>
+        )}
       </div>
     </div>
   );
