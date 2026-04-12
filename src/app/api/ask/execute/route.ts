@@ -15,7 +15,7 @@ interface Action {
   connection_id?: number;
 }
 
-export const POST = withAuth(async (req: Request) => {
+export const POST = withAuth(async (req: Request, _userId: string) => {
   const { action } = await req.json() as { action: Action };
 
   if (!action?.type) {
@@ -23,13 +23,15 @@ export const POST = withAuth(async (req: Request) => {
   }
 
   const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  // Forward auth cookies so internal API calls are authenticated
+  const cookie = req.headers.get('cookie') || '';
 
   try {
     switch (action.type) {
       case 'schedule': {
         const res = await fetch(`${baseUrl}/api/schedule/confirm`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', cookie },
           body: JSON.stringify({
             events: [{
               title: action.title,
@@ -51,7 +53,7 @@ export const POST = withAuth(async (req: Request) => {
 
         const res = await fetch(`${baseUrl}/api/tasks/complete`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', cookie },
           body: JSON.stringify({ task_id: action.task_id, date }),
         });
         const data = await res.json();
@@ -61,7 +63,7 @@ export const POST = withAuth(async (req: Request) => {
       case 'push_task': {
         const res = await fetch(`${baseUrl}/api/tasks/push`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', cookie },
           body: JSON.stringify({ task_id: action.task_id }),
         });
         const data = await res.json();
@@ -69,14 +71,14 @@ export const POST = withAuth(async (req: Request) => {
       }
 
       case 'generate_materials': {
-        const res = await fetch(`${baseUrl}/api/materials/generate`, { method: 'POST' });
+        const res = await fetch(`${baseUrl}/api/materials/generate`, { method: 'POST', headers: { cookie } });
         const data = await res.json();
         return NextResponse.json({ success: true, result: data });
       }
 
       case 'refresh_connection': {
         if (action.connection_id) {
-          const res = await fetch(`${baseUrl}/api/connections/${action.connection_id}/fetch`, { method: 'POST' });
+          const res = await fetch(`${baseUrl}/api/connections/${action.connection_id}/fetch`, { method: 'POST', headers: { cookie } });
           const data = await res.json();
           return NextResponse.json({ success: true, result: data });
         }

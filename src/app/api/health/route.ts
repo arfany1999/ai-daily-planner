@@ -35,7 +35,8 @@ export async function GET() {
     checks.google = { status: 'not_configured', message: 'Not signed in' };
     checks.canvas = { status: 'not_configured' };
   } else if (userResult.status === 'fulfilled' && userResult.value) {
-    const userData = (userResult.value as { data?: Record<string, unknown> | null }).data;
+    const supaRes = userResult.value as { data?: Record<string, unknown> | null; error?: unknown };
+    const userData = supaRes.data;
     if (userData?.google_access_token) {
       try {
         decrypt(userData.google_access_token as string);

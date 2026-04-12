@@ -1,7 +1,7 @@
 import { supabaseAdmin } from './supabase';
 
 export interface SubscriptionState {
-  isPremiun: boolean;
+  isPremium: boolean;
   isAdmin: boolean;
   inTrial: boolean;
   trialExpired: boolean;
@@ -23,7 +23,7 @@ export async function getUserSubscription(userId: string): Promise<SubscriptionS
   // Admins always have unlimited free access
   if (data?.is_admin === true) {
     return {
-      isPremiun: true,
+      isPremium: true,
       isAdmin: true,
       inTrial: false,
       trialExpired: false,
@@ -49,7 +49,7 @@ export async function getUserSubscription(userId: string): Promise<SubscriptionS
   const hasAccess = inTrial || premiumActive;
 
   return {
-    isPremiun: isPremium,
+    isPremium: isPremium,
     isAdmin: false,
     inTrial,
     trialExpired,

@@ -137,7 +137,7 @@ export default function SettingsPage() {
   const [conns, setConns] = useState({ google: true, gmail: true, canvas: false });
   const [googleToast, setGoogleToast] = useState('');
   const [activeTab, setActiveTab] = useState<'general' | 'premium'>('general');
-  const [sub, setSub] = useState<{ isPremiun?: boolean; inTrial?: boolean; trialDaysLeft?: number; subscriptionEnd?: string | null } | null>(null);
+  const [sub, setSub] = useState<{ isPremium?: boolean; inTrial?: boolean; trialDaysLeft?: number; subscriptionEnd?: string | null } | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
@@ -231,7 +231,7 @@ export default function SettingsPage() {
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7c3aed', marginBottom: 6 }}>
               AI Daily Premium
             </div>
-            {sub?.isPremiun ? (
+            {sub?.isPremium ? (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <span style={{ fontSize: 18 }}>✦</span>
