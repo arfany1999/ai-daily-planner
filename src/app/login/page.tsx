@@ -153,7 +153,7 @@ function LoginContent() {
               Sign in with Google
             </button>
             <div style={{ marginTop: 14, padding: '9px 12px', borderRadius: 10, background: 'rgba(74,110,245,0.06)', border: '1px solid rgba(74,110,245,0.15)', fontSize: 11, color: T.textSoft, lineHeight: 1.6, textAlign: 'left' }}>
-              <strong style={{ color: T.teal }}>Tip:</strong> If Google shows a warning, click <strong>&ldquo;Advanced&rdquo;</strong> → <strong>&ldquo;Go to AI Daily&rdquo;</strong> to continue.
+              <strong style={{ color: T.teal }}>Tip:</strong> After signing in, connect your Calendar &amp; Gmail from <strong>Settings</strong> to unlock full features.
             </div>
           </>
         )}
@@ -210,7 +210,7 @@ function LoginContent() {
             )}
 
             <div style={{ padding: '9px 12px', borderRadius: 10, background: 'rgba(232,123,53,0.06)', border: '1px solid rgba(232,123,53,0.15)', fontSize: 11, color: T.textSoft, lineHeight: 1.6 }}>
-              <strong style={{ color: '#e87b35' }}>Note:</strong> Email accounts don&apos;t get Calendar or Gmail access — only Google sign-in enables those integrations.
+              <strong style={{ color: '#e87b35' }}>Note:</strong> After signing in, connect Calendar &amp; Gmail from <strong>Settings</strong> to unlock full features.
             </div>
           </form>
         )}
