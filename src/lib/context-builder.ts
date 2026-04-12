@@ -55,7 +55,15 @@ export async function buildContextText(userId: string, targetDate: string): Prom
     supabaseAdmin.from('semester_context').select('data').eq('user_id', userId).single(),
   ]);
 
-  const lines: string[] = [`=== INTELLIGENCE SNAPSHOT — ${targetDate} ===\n`];
+  // Run intelligence engine first
+  let intelligenceSummary = '';
+  try {
+    const { runIntelligenceEngine } = await import('./intelligence-engine');
+    const report = await runIntelligenceEngine(userId, targetDate);
+    intelligenceSummary = report.rawSummary + '\n\n';
+  } catch { /* non-fatal, fall back to raw data only */ }
+
+  const lines: string[] = [intelligenceSummary + `=== INTELLIGENCE SNAPSHOT — ${targetDate} ===\n`];
 
   // ── 1. Calendar — full 14 days with descriptions ──────────────────────────
   const events: CalEvent[] = (calRes.data?.data as CalEvent[] | null) || [];
