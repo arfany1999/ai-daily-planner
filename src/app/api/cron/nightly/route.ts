@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getAllUsers, getUserTokens, logError, getUserContext } from '@/lib/db';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getCalendarService, getGmailService } from '@/lib/google';
+import { getCalendarService } from '@/lib/google';
 import { generateWithClaude, isAiAvailable } from '@/lib/claude';
 import { fetchAllCanvasData } from '@/lib/canvas';
 import { buildContextText, storeContextSnapshot } from '@/lib/context-builder';
 import { syncCalendarToCache, renewExpiringWatches } from '@/lib/gcal-sync';
 import { syncCanvasToCache } from '@/lib/canvas-sync';
+import { syncEmailToCache } from '@/lib/gmail-sync';
 
 const TIMEZONE = 'Australia/Melbourne';
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -82,27 +83,7 @@ export async function GET(req: Request) {
 
       // 2. Refresh email cache
       try {
-        const gmail = await getGmailService(user.id);
-        const oneDayAgo = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000);
-        const listRes = await gmail.users.messages.list({ userId: 'me', q: `after:${oneDayAgo}`, maxResults: 20 });
-        const messages = listRes.data.messages || [];
-        const emails: { id: string; from: string; subject: string; snippet: string; date: string }[] = [];
-
-        for (const msg of messages.slice(0, 15)) {
-          try {
-            const detail = await gmail.users.messages.get({
-              userId: 'me', id: msg.id!, format: 'metadata',
-              metadataHeaders: ['From', 'Subject', 'Date'],
-            });
-            const headers = detail.data.payload?.headers || [];
-            const get = (n: string) => headers.find((h) => h.name?.toLowerCase() === n)?.value || '';
-            emails.push({ id: msg.id!, from: get('from'), subject: get('subject'), snippet: detail.data.snippet || '', date: get('date') });
-          } catch { /* skip individual email errors */ }
-        }
-
-        await supabaseAdmin.from('email_cache').upsert({
-          user_id: user.id, data: emails, fetched_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
+        const emails = await syncEmailToCache(user.id);
         steps.emails = `ok — ${emails.length} emails`;
       } catch (e) {
         steps.emails = `error — ${e instanceof Error ? e.message : 'unknown'}`;
