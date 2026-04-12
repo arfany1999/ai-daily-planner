@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import PageHeader from '@/components/PageHeader';
 import { T } from '@/lib/theme';
 
 interface Assignment {
@@ -10,6 +9,8 @@ interface Assignment {
   course_name: string;
   due_at: string | null;
   has_submitted_submissions: boolean;
+  points_possible?: number;
+  submission_types?: string[];
 }
 
 interface Announcement {
@@ -40,19 +41,78 @@ function daysUntil(dateStr: string): number {
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-AU', {
     timeZone: 'Australia/Melbourne', weekday: 'short', day: 'numeric', month: 'short',
-    hour: 'numeric', minute: '2-digit',
+    hour: 'numeric', minute: '2-digit', hour12: true,
   });
 }
 
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().slice(0, 200);
+  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim().slice(0, 220);
 }
+
+// Fix known Canvas typos & normalise capitalisation
+function fixName(name: string): string {
+  return name
+    .replace(/Pharmacutical/gi, 'Pharmaceutical')
+    .replace(/pharmacutical/gi, 'pharmaceutical');
+}
+
+// Short display code for a course name
+function courseCode(name: string): string {
+  // Use first meaningful words / acronym
+  const stop = new Set(['and', 'the', 'of', 'in', 'for', 'a', 'an', 'to']);
+  const words = name.split(/\s+/).filter(w => !stop.has(w.toLowerCase()));
+  if (words.length <= 2) return words.map(w => w.slice(0, 4)).join('').toUpperCase();
+  return words.slice(0, 3).map(w => w[0]).join('').toUpperCase();
+}
+
+// Commander urgency config
+function urgencyConfig(days: number): { color: string; label: string; bg: string } {
+  if (days <= 2)  return { color: '#D50000', label: days === 0 ? 'TODAY' : days === 1 ? 'TOMORROW' : `${days}d`, bg: '#D5000012' };
+  if (days <= 6)  return { color: '#F4511E', label: `${days}d`, bg: '#F4511E10' };
+  if (days <= 13) return { color: '#F6BF26', label: `${days}d`, bg: '#F6BF2610' };
+  return           { color: '#0B8043', label: `${days}d`, bg: '#0B804310' };
+}
+
+// Commander prep plan based on assignment type + days left
+function prepPlan(name: string, days: number, submitted: boolean): string | null {
+  if (submitted) return null;
+  const n = name.toLowerCase();
+  const isTest     = n.includes('test') || n.includes('exam') || n.includes('quiz') || n.includes('invigilated');
+  const isReport   = n.includes('report') || n.includes('lab') || n.includes('write') || n.includes('essay');
+  const isProject  = n.includes('project') || n.includes('assignment') || n.includes('portfolio');
+
+  if (days <= 1) {
+    if (isTest)    return '🚨 Final cram — review summary notes, key formulas, past papers tonight.';
+    if (isReport)  return '🚨 Due very soon — finalise and proofread now. Submit early.';
+    return '🚨 Due very soon — complete and submit today.';
+  }
+  if (days <= 3) {
+    if (isTest)    return '⚡ 3-day sprint: Day 1 = notes review, Day 2 = practice questions, Day 3 = past papers.';
+    if (isReport)  return '⚡ Draft tonight, review tomorrow, polish and submit day 3.';
+    return '⚡ Start now — break into parts. Aim to finish by tomorrow.';
+  }
+  if (days <= 7) {
+    if (isTest)    return `📅 ${days} days out — start with topic summaries. Aim for 90min focused blocks daily.`;
+    if (isReport)  return `📅 ${days} days — outline today, draft sections over next 3 days, editing last 2.`;
+    if (isProject) return `📅 ${days} days — split into milestones. Start the hardest part first.`;
+    return `📅 ${days} days out — add a study block this week to make progress.`;
+  }
+  if (days <= 14) {
+    if (isTest)    return `📖 ${days} days — no rush yet but start compiling notes. 1 topic per day.`;
+    return `📖 ${days} days — on your radar. Schedule a prep block in the next 3–4 days.`;
+  }
+  return `✅ ${days} days away — bookmark it. Review specs when you have 10 min.`;
+}
+
+// COURSE COLOR PALETTE
+const COURSE_COLORS = ['#4a6ef5', '#039BE5', '#8E24AA', '#0B8043', '#E67C73', '#F4511E'];
 
 export default function CanvasPage() {
   const [data, setData] = useState<CanvasData | null>(null);
   const [loading, setLoading] = useState(true);
   const [stale, setStale] = useState(false);
-  const [tab, setTab] = useState<'assignments' | 'announcements'>('assignments');
+  const [activeTab, setActiveTab] = useState<string>('all');
+  const [showCompleted, setShowCompleted] = useState<Record<string, boolean>>({});
   const [tokenInput, setTokenInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [tokenError, setTokenError] = useState('');
@@ -61,237 +121,361 @@ export default function CanvasPage() {
     fetch('/api/canvas')
       .then((r) => r.json())
       .then((d) => {
-        if (d.data) {
-          setData(d.data);
-          setStale(d.stale || false);
-        }
+        if (d.data) { setData(d.data); setStale(d.stale || false); }
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
   const saveToken = async () => {
-    setSaving(true);
-    setTokenError('');
+    setSaving(true); setTokenError('');
     try {
       const r = await fetch('/api/settings/canvas-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: tokenInput }),
       });
       const d = await r.json();
       if (d.success) {
-        // Refresh canvas data
         setTokenInput('');
         const canvasRes = await fetch('/api/canvas');
         const canvasData = await canvasRes.json();
         if (canvasData.data) setData(canvasData.data);
-      } else {
-        setTokenError(d.error || 'Failed to save token');
-      }
-    } catch {
-      setTokenError('Network error');
-    }
+      } else { setTokenError(d.error || 'Failed'); }
+    } catch { setTokenError('Network error'); }
     setSaving(false);
   };
 
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={{ padding: '0 18px' }}>
-        <PageHeader title="Canvas Feed" subtitle="Loading..." />
-        <div style={{ textAlign: 'center', padding: 40, color: T.textMuted, fontSize: 12 }}>Fetching Canvas data...</div>
-      </div>
-    );
-  }
-
-  // Not connected state
-  if (!data) {
-    return (
-      <div style={{ padding: '0 18px' }}>
-        <PageHeader title="Canvas Feed" subtitle="RMIT announcements & updates" />
-        <div style={{
-          background: T.card, border: `1px solid ${T.border}`, borderRadius: 14,
-          padding: 24,
-        }}>
-          <div style={{ fontSize: 40, marginBottom: 12, textAlign: 'center' }}>🎓</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: T.text, marginBottom: 8, textAlign: 'center' }}>Connect Canvas</div>
-          <div style={{ fontSize: 12, color: T.textSoft, lineHeight: 1.7, fontWeight: 300, marginBottom: 16, textAlign: 'center' }}>
-            Enter your RMIT Canvas API token. Get it from rmit.instructure.com &gt; Account &gt; Settings &gt; New Access Token.
-          </div>
-
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-              type="password"
-              placeholder="Paste your Canvas API token..."
-              style={{
-                flex: 1, padding: '10px 14px', background: T.bg,
-                border: `1px solid ${T.border}`, borderRadius: 8,
-                color: T.text, fontSize: 12, outline: 'none',
-              }}
-            />
-            <button
-              onClick={saveToken}
-              disabled={saving || !tokenInput.trim()}
-              style={{
-                padding: '10px 18px',
-                background: tokenInput.trim() ? `linear-gradient(135deg,${T.tealDk},${T.teal})` : '#333',
-                color: tokenInput.trim() ? '#fff' : '#666',
-                border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                cursor: tokenInput.trim() ? 'pointer' : 'default',
-                opacity: saving ? 0.5 : 1,
-              }}
-            >
-              {saving ? 'Validating...' : 'Connect'}
-            </button>
-          </div>
-
-          {tokenError && (
-            <div style={{ marginTop: 10, fontSize: 11, color: T.red, padding: '8px 12px', background: T.red + '0c', borderRadius: 6 }}>
-              {tokenError}
-            </div>
-          )}
+      <div style={{ padding: '22px 18px' }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: T.text, marginBottom: 4 }}>Canvas</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
+          {[1,2,3].map(i => (
+            <div key={i} style={{ height: 80, borderRadius: 14, background: 'rgba(255,255,255,0.4)', animation: 'fadeIn 0.5s ease both' }} />
+          ))}
         </div>
       </div>
     );
   }
 
-  // Connected state — show data
-  const upcomingAssignments = data.assignments
-    .filter((a) => a.due_at && daysUntil(a.due_at) >= 0)
+  // ── Not connected ──────────────────────────────────────────────────────────
+  if (!data) {
+    return (
+      <div style={{ padding: '22px 18px' }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: T.text, marginBottom: 4 }}>Canvas</div>
+        <div style={{
+          background: 'rgba(255,255,255,0.58)', backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255,255,255,0.85)', borderRadius: 20,
+          padding: 28, textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 38, marginBottom: 14 }}>🎓</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 8 }}>Connect RMIT Canvas</div>
+          <div style={{ fontSize: 12, color: T.textSoft, lineHeight: 1.7, marginBottom: 20, maxWidth: 280, margin: '0 auto 20px' }}>
+            Go to rmit.instructure.com → Account → Settings → New Access Token
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input value={tokenInput} onChange={e => setTokenInput(e.target.value)}
+              type="password" placeholder="Paste Canvas API token..."
+              style={{ flex: 1, padding: '11px 14px', background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 10, color: T.text, fontSize: 12, outline: 'none' }}
+            />
+            <button onClick={saveToken} disabled={saving || !tokenInput.trim()} style={{
+              padding: '11px 18px', background: tokenInput.trim() ? `linear-gradient(135deg,${T.tealDk},${T.teal})` : 'rgba(0,0,0,0.07)',
+              color: tokenInput.trim() ? '#fff' : T.textMuted, border: 'none', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: tokenInput.trim() ? 'pointer' : 'default',
+            }}>{saving ? 'Checking…' : 'Connect'}</button>
+          </div>
+          {tokenError && <div style={{ marginTop: 10, fontSize: 11, color: T.red }}>{tokenError}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Build per-course data ──────────────────────────────────────────────────
+  const courses = data.courses;
+
+  // Assign a color per course
+  const courseColorMap: Record<string, string> = {};
+  courses.forEach((c, i) => { courseColorMap[c.name] = COURSE_COLORS[i % COURSE_COLORS.length]; });
+
+  // For "All" tab: pending across all courses sorted by urgency
+  const allPending = data.assignments
+    .filter(a => a.due_at && daysUntil(a.due_at) >= 0 && !a.has_submitted_submissions)
     .sort((a, b) => new Date(a.due_at!).getTime() - new Date(b.due_at!).getTime());
 
-  const pastAssignments = data.assignments
-    .filter((a) => a.due_at && daysUntil(a.due_at) < 0)
-    .sort((a, b) => new Date(b.due_at!).getTime() - new Date(a.due_at!).getTime())
-    .slice(0, 5);
+  const allSubmitted = data.assignments
+    .filter(a => a.has_submitted_submissions)
+    .sort((a, b) => (a.due_at && b.due_at) ? new Date(b.due_at).getTime() - new Date(a.due_at).getTime() : 0);
 
-  const recentAnnouncements = data.announcements
-    .sort((a, b) => new Date(b.posted_at).getTime() - new Date(a.posted_at).getTime())
-    .slice(0, 15);
+  const allOverdue = data.assignments
+    .filter(a => a.due_at && daysUntil(a.due_at) < 0 && !a.has_submitted_submissions);
+
+  const tabs = [
+    { key: 'all', label: 'All', code: 'ALL' },
+    ...courses.map((c, i) => ({ key: c.name, label: c.name, code: courseCode(c.name), color: COURSE_COLORS[i % COURSE_COLORS.length] })),
+    { key: 'announcements', label: 'Announcements', code: 'NEWS' },
+  ];
+
+  const activeCourse = activeTab !== 'all' && activeTab !== 'announcements' ? courses.find(c => c.name === activeTab) : null;
+
+  const visiblePending = activeCourse
+    ? allPending.filter(a => a.course_name === activeTab)
+    : allPending;
+
+  const visibleSubmitted = activeCourse
+    ? allSubmitted.filter(a => a.course_name === activeTab)
+    : allSubmitted;
+
+  const visibleOverdue = activeCourse
+    ? allOverdue.filter(a => a.course_name === activeTab)
+    : allOverdue;
+
+  const visibleAnnouncements = (activeCourse
+    ? data.announcements.filter(a => a.course_name === activeTab)
+    : data.announcements
+  ).sort((a, b) => new Date(b.posted_at).getTime() - new Date(a.posted_at).getTime());
+
+  const completedKey = activeTab;
+  const showCompletedForTab = showCompleted[completedKey] ?? false;
 
   return (
-    <div style={{ padding: '0 18px' }}>
-      <PageHeader title="Canvas Feed" subtitle={`${data.courses.length} active courses`} />
+    <div style={{ padding: '22px 18px 80px' }}>
 
-      {stale && (
-        <div style={{ marginBottom: 10, fontSize: 10, color: T.yellow, background: T.yellow + '10', padding: '6px 12px', borderRadius: 6, border: `1px solid ${T.yellow}20` }}>
-          Using cached data
+      {/* Header */}
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.5px' }}>Canvas</div>
+            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
+              {courses.length} courses · {allPending.length} pending · {allSubmitted.length} done
+              {stale && <span style={{ marginLeft: 8, color: T.yellow }}>cached</span>}
+            </div>
+          </div>
+          {/* Urgency summary */}
+          {allPending.length > 0 && (() => {
+            const next = allPending[0];
+            const days = daysUntil(next.due_at!);
+            const urg = urgencyConfig(days);
+            return (
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: urg.color, letterSpacing: '0.08em' }}>Next due</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: urg.color }}>{urg.label}</div>
+                <div style={{ fontSize: 10, color: T.textMuted, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fixName(next.name)}</div>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
+      {/* Course tabs */}
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, marginBottom: 16 }}>
+        {tabs.map(t => {
+          const isActive = activeTab === t.key;
+          const color = ('color' in t ? t.color : undefined) || T.teal;
+          return (
+            <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
+              flexShrink: 0,
+              padding: '7px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+              background: isActive ? color : 'rgba(255,255,255,0.6)',
+              color: isActive ? '#fff' : T.textMuted,
+              fontSize: 11, fontWeight: 700,
+              boxShadow: isActive ? `0 3px 12px ${color}30` : '0 1px 4px rgba(0,0,0,0.06)',
+              transition: 'all 0.18s cubic-bezier(0.34,1.56,0.64,1)',
+              transform: isActive ? 'scale(1.04)' : 'scale(1)',
+            }}>
+              {t.code}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Announcements tab */}
+      {activeTab === 'announcements' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {visibleAnnouncements.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 32, color: T.textMuted, fontSize: 12 }}>No announcements</div>
+          )}
+          {visibleAnnouncements.map(a => {
+            const courseColor = courseColorMap[a.course_name] || T.teal;
+            return (
+              <div key={a.id} style={{
+                background: 'rgba(255,255,255,0.58)', backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255,255,255,0.85)', borderRadius: 14, padding: '14px 16px',
+                borderLeft: `3px solid ${courseColor}`,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, flex: 1, lineHeight: 1.3 }}>{a.title}</div>
+                  <div style={{ fontSize: 9, color: T.textMuted, flexShrink: 0, marginLeft: 10 }}>
+                    {new Date(a.posted_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                  </div>
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: courseColor, marginBottom: 6 }}>
+                  {a.course_name} · {a.author?.display_name}
+                </div>
+                <div style={{ fontSize: 11, color: T.textSoft, lineHeight: 1.6 }}>{stripHtml(a.message)}</div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Courses summary */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        {data.courses.map((c) => (
-          <div key={c.id} style={{
-            padding: '6px 12px', background: T.card, border: `1px solid ${T.border}`,
-            borderRadius: 8, fontSize: 11, color: T.text, fontWeight: 500,
-          }}>
-            {c.course_code}
-          </div>
-        ))}
-      </div>
-
-      {/* Tab switcher */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
-        {(['assignments', 'announcements'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            flex: 1, padding: '9px 0',
-            background: tab === t ? `linear-gradient(135deg,${T.tealDk},${T.teal})` : T.card,
-            color: tab === t ? '#fff' : T.textMuted,
-            border: `1px solid ${tab === t ? T.teal : T.border}`,
-            borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            textTransform: 'capitalize',
-          }}>{t} ({t === 'assignments' ? data.assignments.length : data.announcements.length})</button>
-        ))}
-      </div>
-
-      {/* Assignments tab */}
-      {tab === 'assignments' && (
+      {/* Assignment views (All + course tabs) */}
+      {activeTab !== 'announcements' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {upcomingAssignments.length > 0 && (
+
+          {/* Overdue — not submitted */}
+          {visibleOverdue.length > 0 && (
             <>
-              <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.orange, marginBottom: 2 }}>Upcoming</div>
-              {upcomingAssignments.map((a) => {
-                const days = daysUntil(a.due_at!);
-                const urgent = days <= 3;
+              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#D50000', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>⚠️</span> Overdue · not submitted
+              </div>
+              {visibleOverdue.map(a => (
+                <AssignmentCard key={a.id} a={a} courseColor={courseColorMap[a.course_name] || T.teal} showCourse={!activeCourse} />
+              ))}
+            </>
+          )}
+
+          {/* Pending */}
+          {visiblePending.length > 0 && (
+            <>
+              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.textMuted, marginBottom: 4, marginTop: visibleOverdue.length > 0 ? 12 : 0 }}>
+                Action required · {visiblePending.length} pending
+              </div>
+              {visiblePending.map(a => (
+                <AssignmentCard key={a.id} a={a} courseColor={courseColorMap[a.course_name] || T.teal} showCourse={!activeCourse} />
+              ))}
+            </>
+          )}
+
+          {visiblePending.length === 0 && visibleOverdue.length === 0 && (
+            <div style={{
+              textAlign: 'center', padding: '28px 20px',
+              background: 'rgba(11,128,67,0.07)', borderRadius: 16, border: '1px solid rgba(11,128,67,0.15)',
+            }}>
+              <div style={{ fontSize: 22, marginBottom: 8 }}>✅</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0B8043' }}>All caught up!</div>
+              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>No pending assignments for this course.</div>
+            </div>
+          )}
+
+          {/* Announcements strip for course tabs */}
+          {activeCourse && visibleAnnouncements.length > 0 && (
+            <>
+              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.textMuted, marginTop: 16, marginBottom: 4 }}>
+                Announcements
+              </div>
+              {visibleAnnouncements.slice(0, 3).map(a => {
+                const courseColor = courseColorMap[a.course_name] || T.teal;
                 return (
                   <div key={a.id} style={{
-                    background: T.card, border: `1px solid ${urgent ? T.red + '30' : T.border}`,
-                    borderRadius: 10, padding: '12px 14px',
+                    background: 'rgba(255,255,255,0.45)', borderRadius: 12, padding: '11px 14px',
+                    borderLeft: `3px solid ${courseColor}`, border: `1px solid rgba(255,255,255,0.8)`,
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: T.text, flex: 1 }}>{a.name}</div>
-                      <div style={{
-                        fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 5, flexShrink: 0, marginLeft: 8,
-                        background: urgent ? T.red + '15' : T.yellow + '15',
-                        color: urgent ? T.red : T.yellow,
-                      }}>
-                        {days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `${days} days`}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: T.text, flex: 1 }}>{a.title}</div>
+                      <div style={{ fontSize: 9, color: T.textMuted, marginLeft: 8 }}>
+                        {new Date(a.posted_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
                       </div>
                     </div>
-                    <div style={{ fontSize: 11, color: T.textSoft, fontWeight: 300 }}>
-                      {a.course_name} {'\u2022'} Due {formatDate(a.due_at!)}
-                    </div>
-                    {a.has_submitted_submissions && (
-                      <div style={{ marginTop: 4, fontSize: 10, color: T.green, fontWeight: 500 }}>{'\u2713'} Submitted</div>
-                    )}
+                    <div style={{ fontSize: 11, color: T.textSoft, lineHeight: 1.5 }}>{stripHtml(a.message)}</div>
                   </div>
                 );
               })}
             </>
           )}
 
-          {pastAssignments.length > 0 && (
-            <>
-              <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textMuted, marginTop: 12, marginBottom: 2 }}>Past</div>
-              {pastAssignments.map((a) => (
+          {/* Completed (submitted) — collapsed by default */}
+          {visibleSubmitted.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <button onClick={() => setShowCompleted(s => ({ ...s, [completedKey]: !showCompletedForTab }))} style={{
+                display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', marginBottom: 6,
+              }}>
+                <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#0B8043' }}>
+                  ✓ Submitted · {visibleSubmitted.length}
+                </span>
+                <span style={{ fontSize: 10, color: T.textMuted }}>{showCompletedForTab ? '▲' : '▼'}</span>
+              </button>
+              {showCompletedForTab && visibleSubmitted.map(a => (
                 <div key={a.id} style={{
-                  background: T.card, border: `1px solid ${T.border}`, borderRadius: 10,
-                  padding: '10px 14px', opacity: 0.5,
+                  background: 'rgba(255,255,255,0.3)', border: '1px solid rgba(0,0,0,0.05)',
+                  borderRadius: 10, padding: '9px 14px', marginBottom: 5, opacity: 0.6,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: T.textSoft }}>{a.name}</div>
-                  <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 300 }}>
-                    {a.course_name} {'\u2022'} Due {formatDate(a.due_at!)}
-                    {a.has_submitted_submissions && <span style={{ color: T.green, marginLeft: 6 }}>{'\u2713'} Submitted</span>}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: T.textSoft }}>{fixName(a.name)}</div>
+                    {!activeCourse && <div style={{ fontSize: 10, color: T.textMuted }}>{a.course_name}</div>}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: '#0B8043', fontWeight: 700 }}>✓</span>
+                    {a.due_at && <span style={{ fontSize: 9, color: T.textMuted }}>{formatDate(a.due_at)}</span>}
                   </div>
                 </div>
               ))}
-            </>
-          )}
-
-          {upcomingAssignments.length === 0 && pastAssignments.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 30, color: T.textMuted, fontSize: 12 }}>No assignments found.</div>
+            </div>
           )}
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* Announcements tab */}
-      {tab === 'announcements' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {recentAnnouncements.map((a) => (
-            <div key={a.id} style={{
-              background: T.card, border: `1px solid ${T.border}`, borderRadius: 10,
-              padding: '12px 14px',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: T.text, flex: 1 }}>{a.title}</div>
-                <div style={{ fontSize: 9, color: T.textMuted, flexShrink: 0, marginLeft: 8 }}>
-                  {new Date(a.posted_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
-                </div>
-              </div>
-              <div style={{ fontSize: 11, color: T.blue, fontWeight: 500, marginBottom: 4 }}>
-                {a.course_name} {'\u2022'} {a.author?.display_name}
-              </div>
-              <div style={{ fontSize: 11, color: T.textSoft, lineHeight: 1.6, fontWeight: 300 }}>
-                {stripHtml(a.message)}
-              </div>
-            </div>
-          ))}
-          {recentAnnouncements.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 30, color: T.textMuted, fontSize: 12 }}>No recent announcements.</div>
-          )}
+// ── Assignment card component ─────────────────────────────────────────────────
+
+function AssignmentCard({ a, courseColor, showCourse }: { a: Assignment; courseColor: string; showCourse: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const days = a.due_at ? daysUntil(a.due_at) : null;
+  const urg = days !== null ? urgencyConfig(days) : null;
+  const plan = days !== null ? prepPlan(a.name, days, a.has_submitted_submissions) : null;
+  const name = fixName(a.name);
+
+  return (
+    <div style={{
+      background: urg ? urg.bg : 'rgba(255,255,255,0.62)',
+      backdropFilter: 'blur(14px)',
+      border: `1px solid rgba(255,255,255,0.85)`,
+      borderLeft: `3px solid ${urg ? urg.color : courseColor}`,
+      borderRadius: '0 14px 14px 0',
+      padding: '13px 14px',
+      boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+      animation: 'slideUp 0.3s ease both',
+      cursor: 'pointer',
+    } as React.CSSProperties}
+    onClick={() => setExpanded(e => !e)}
+    >
+      {/* Top row */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.text, lineHeight: 1.3, marginBottom: 3 }}>{name}</div>
+          <div style={{ fontSize: 10, color: T.textMuted }}>
+            {showCourse && <span style={{ color: courseColor, fontWeight: 600 }}>{a.course_name} · </span>}
+            {a.due_at ? `Due ${formatDate(a.due_at)}` : 'No due date'}
+          </div>
+        </div>
+        {urg && (
+          <div style={{
+            flexShrink: 0, padding: '4px 9px', borderRadius: 7,
+            background: `${urg.color}18`, color: urg.color,
+            fontSize: 10, fontWeight: 800, letterSpacing: '0.04em',
+          }}>
+            {urg.label}
+          </div>
+        )}
+      </div>
+
+      {/* Prep plan — always visible for urgent, collapsed otherwise */}
+      {plan && (days !== null && days <= 7 || expanded) && (
+        <div style={{
+          marginTop: 10, padding: '8px 11px', borderRadius: 9,
+          background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.9)',
+          fontSize: 11, color: T.textSoft, lineHeight: 1.6,
+        }}>
+          {plan}
+        </div>
+      )}
+
+      {/* Show prep for longer items on expand */}
+      {plan && days !== null && days > 7 && !expanded && (
+        <div style={{ marginTop: 6, fontSize: 10, color: T.textMuted }}>
+          Tap for prep plan ›
         </div>
       )}
     </div>

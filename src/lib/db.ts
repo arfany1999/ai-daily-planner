@@ -104,6 +104,14 @@ export async function getUserTokens(userId: string): Promise<{ accessToken: stri
   };
 }
 
+export const DEFAULT_DOMAINS = [
+  { id: 'academia', label: 'Academia (RMIT)', icon: '🎓', weight: 5, enabled: true, color: '#4a6ef5' },
+  { id: 'dev',      label: 'Dev Projects',    icon: '💻', weight: 4, enabled: true, color: '#0d9b8a' },
+  { id: 'finance',  label: 'Finance / Crypto', icon: '📈', weight: 3, enabled: true, color: '#f5a623' },
+  { id: 'gym',      label: 'Health / Gym',     icon: '🏋', weight: 3, enabled: true, color: '#27c77a' },
+  { id: 'personal', label: 'Personal / Admin', icon: '🏠', weight: 2, enabled: true, color: '#e94f4f' },
+];
+
 // Get all settings for a user
 export async function getSettings(userId: string): Promise<Record<string, unknown>> {
   const { data } = await supabaseAdmin
@@ -126,6 +134,8 @@ export async function getSettings(userId: string): Promise<Record<string, unknow
     email_time: data.email_time,
     push_notifications: data.push_notifications,
     timezone: data.timezone,
+    agentic_mode: data.agentic_mode,
+    domains: data.domains || DEFAULT_DOMAINS,
   };
 }
 
@@ -165,15 +175,32 @@ export async function getUserContext(userId: string): Promise<string> {
 
   const settings = await getSettings(userId);
   const name = user?.name || user?.email?.split('@')[0] || 'User';
+  const domains = (settings.domains as typeof DEFAULT_DOMAINS) || DEFAULT_DOMAINS;
+  const activeDomains = domains.filter(d => d.enabled).sort((a, b) => b.weight - a.weight);
 
-  return `You are an AI daily planner assistant for ${name}.
+  const domainContext = activeDomains.map(d =>
+    `  - ${d.icon} ${d.label}: urgency weight ${d.weight}/5`
+  ).join('\n');
+
+  return `You are an AI commander-calendar for ${name}. You orchestrate their day, not just display it.
 
 Schedule settings:
 - Work days: ${JSON.stringify(settings.work_days || [])}
 - Work hours: ${settings.work_start || '9:00'} - ${settings.work_end || '18:30'}
 - Gym days: ${JSON.stringify(settings.gym_days || [])}
 - Gym hours: ${settings.gym_start || '19:00'} - ${settings.gym_end || '21:00'}
-- Timezone: ${settings.timezone || 'Australia/Melbourne'}`;
+- Timezone: ${settings.timezone || 'Australia/Melbourne'}
+
+Life domains (ranked by urgency weight):
+${domainContext}
+
+Energy curve: ${name} is sharpest in the morning (6am–12pm). Schedule deep work (study, coding) in the morning. Lighter tasks (email, admin, reviews) in the afternoon. Gym and wind-down in the evening.
+
+Scheduling philosophy:
+- Group similar tasks into 90-minute focus blocks
+- Add 15–30 min buffers between blocks
+- Never double-book over fixed events (classes, meetings)
+- Prioritise by: deadline proximity × domain urgency weight`;
 }
 
 // Get all users (for nightly run)

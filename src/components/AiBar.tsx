@@ -4,12 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { T } from '@/lib/theme';
 
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  actions?: Action[];
-}
-
 interface Action {
   type: string;
   title?: string;
@@ -19,6 +13,20 @@ interface Action {
   description?: string;
   task_id?: string;
 }
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  streaming?: boolean;
+  actions?: Action[];
+}
+
+const SUGGESTIONS = [
+  "What's my most urgent task right now?",
+  "What deadlines am I risking this week?",
+  "What should I focus on after lunch?",
+  "How am I tracking this semester?",
+];
 
 export default function AiBar() {
   const [open, setOpen] = useState(false);
@@ -30,6 +38,7 @@ export default function AiBar() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
+  // Keyboard shortcut: ⌘K / Ctrl+K
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -43,198 +52,362 @@ export default function AiBar() {
     return () => window.removeEventListener('keydown', h);
   }, []);
 
+  // Auto-scroll to bottom as text streams in
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chat]);
 
   const pageContext = pathname?.replace('/', '') || 'home';
 
-  const send = async () => {
-    const text = msg.trim();
+  const send = async (overrideMsg?: string) => {
+    const text = (overrideMsg ?? msg).trim();
     if (!text || loading) return;
 
     setMsg('');
-    setChat((c) => [...c, { role: 'user', content: text }]);
+    setOpen(true);
+
+    // Optimistic: push user bubble + empty assistant bubble immediately
+    setChat(c => [
+      ...c,
+      { role: 'user', content: text },
+      { role: 'assistant', content: '', streaming: true },
+    ]);
     setLoading(true);
 
     try {
-      const res = await fetch('/api/ask', {
+      const res = await fetch('/api/ask/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
           page_context: pageContext,
-          conversation: chat.map((m) => ({ role: m.role, content: m.content })),
+          // snapshot of conversation before the two new messages above
+          conversation: chat.map(m => ({ role: m.role, content: m.content })),
         }),
       });
 
-      const data = await res.json();
+      if (!res.ok || !res.body) {
+        const errData = await res.json().catch(() => ({ error: 'Request failed' })) as { error?: string };
+        setChat(c => {
+          const n = [...c];
+          n[n.length - 1] = { role: 'assistant', content: errData.error || 'Something went wrong.' };
+          return n;
+        });
+        setLoading(false);
+        return;
+      }
 
-      if (res.ok) {
-        setChat((c) => [...c, {
-          role: 'assistant',
-          content: data.message || 'No response.',
-          actions: data.actions?.length > 0 ? data.actions : undefined,
-        }]);
-      } else {
-        setChat((c) => [...c, {
-          role: 'assistant',
-          content: data.error === 'Rate limit exceeded. Maximum 30 messages per hour. Try again later.'
-            ? data.error
-            : `Error: ${data.message || data.error || 'Something went wrong.'}`,
-        }]);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const raw = line.slice(6).trim();
+
+          try {
+            const payload = JSON.parse(raw) as {
+              delta?: string;
+              error?: string;
+              type?: string;
+              finalMessage?: string;
+              actions?: Action[];
+            };
+
+            if (payload.error) {
+              setChat(c => {
+                const n = [...c];
+                n[n.length - 1] = { role: 'assistant', content: `Error: ${payload.error}` };
+                return n;
+              });
+              break;
+            }
+
+            if (payload.delta) {
+              // Append streamed token to last message
+              setChat(c => {
+                const n = [...c];
+                const last = n[n.length - 1];
+                n[n.length - 1] = { ...last, content: last.content + payload.delta! };
+                return n;
+              });
+            }
+
+            if (payload.type === 'done') {
+              // Replace with finalMessage (cleaned of JSON wrapper) + attach actions
+              setChat(c => {
+                const n = [...c];
+                n[n.length - 1] = {
+                  role: 'assistant',
+                  content: payload.finalMessage ?? n[n.length - 1].content,
+                  streaming: false,
+                  actions: payload.actions && payload.actions.length > 0 ? payload.actions : undefined,
+                };
+                return n;
+              });
+            }
+          } catch { /* skip malformed lines */ }
+        }
       }
     } catch {
-      setChat((c) => [...c, { role: 'assistant', content: 'Network error. Please try again.' }]);
+      setChat(c => {
+        const n = [...c];
+        n[n.length - 1] = { role: 'assistant', content: 'Network error — please try again.' };
+        return n;
+      });
     }
 
     setLoading(false);
   };
 
-  const executeAction = async (action: Action, index: number) => {
-    const key = `${index}-${action.type}`;
+  const executeAction = async (action: Action, msgIndex: number) => {
+    const key = `${msgIndex}-${action.type}`;
     setExecutingAction(key);
-
     try {
       const res = await fetch('/api/ask/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
       });
-      const data = await res.json();
-
-      if (data.success) {
-        setChat((c) => [...c, { role: 'assistant', content: `Done! ${action.type === 'schedule' ? `Created "${action.title}" on ${action.date}` : `Action "${action.type}" completed.`}` }]);
-      } else {
-        setChat((c) => [...c, { role: 'assistant', content: `Failed: ${data.error || 'Unknown error'}` }]);
-      }
+      const data = await res.json() as { success?: boolean; error?: string };
+      setChat(c => [...c, {
+        role: 'assistant',
+        content: data.success
+          ? `Done — ${action.type === 'schedule' ? `"${action.title}" added to ${action.date}` : `${action.type} completed`}.`
+          : `Failed: ${data.error || 'Unknown error'}`,
+      }]);
     } catch {
-      setChat((c) => [...c, { role: 'assistant', content: 'Failed to execute action.' }]);
+      setChat(c => [...c, { role: 'assistant', content: 'Failed to execute action.' }]);
     }
-
     setExecutingAction(null);
   };
 
-  const suggestions = ['When is my next deadline?', 'What should I study today?', 'Quiz me on BIOL2368', 'Schedule a study session'];
+  const isStreaming = loading && chat.length > 0 && chat[chat.length - 1].streaming;
 
   return (
-    <div style={{ position: 'fixed', bottom: 38, left: 0, right: 0, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div
+      className="ai-bar-wrap"
+      style={{
+        position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+        width: '100%', maxWidth: 430, zIndex: 100,
+        display: 'flex', flexDirection: 'column',
+      }}
+    >
+      {/* ── Chat panel ────────────────────────────────────────────────────── */}
       {open && (
-        <div style={{ background: T.bg2, borderTop: `1px solid ${T.tealBrd}`, maxHeight: '55vh', overflowY: 'auto', padding: 14, width: '100%', maxWidth: 560 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{
+          background: 'rgba(243,237,225,0.96)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          borderTop: '1px solid rgba(255,255,255,0.85)',
+          borderLeft: '1px solid rgba(255,255,255,0.85)',
+          borderRight: '1px solid rgba(255,255,255,0.85)',
+          borderRadius: '16px 16px 0 0',
+          maxHeight: '56vh', overflowY: 'auto',
+          padding: '14px 14px 8px',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.1)',
+        }}>
+
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              {/* Animated AI dot */}
               <div style={{
-                width: 16, height: 16, borderRadius: 5,
-                background: `linear-gradient(135deg,${T.tealDk},${T.teal})`,
+                width: 20, height: 20, borderRadius: 7,
+                background: isStreaming
+                  ? `linear-gradient(135deg, ${T.tealDk}, #a855f7, ${T.teal})`
+                  : `linear-gradient(135deg,${T.tealDk},${T.teal})`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 7, fontWeight: 700, color: '#fff',
+                fontSize: 8, fontWeight: 800, color: '#fff',
+                boxShadow: isStreaming ? `0 0 12px ${T.tealGlow}` : `0 2px 6px ${T.tealGlow}`,
+                transition: 'all 0.3s ease',
               }}>AI</div>
-              <span style={{ fontSize: 12, fontWeight: 600, color: T.teal }}>Ask AI</span>
-              <span style={{ fontSize: 9, color: T.textMuted, background: T.bg3, padding: '2px 6px', borderRadius: 4 }}>{pageContext}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: T.teal, letterSpacing: '-0.2px' }}>
+                Chief of Staff
+              </span>
+              <span style={{
+                fontSize: 9, color: T.textMuted,
+                background: 'rgba(0,0,0,0.06)', padding: '2px 7px', borderRadius: 5,
+              }}>{pageContext}</span>
             </div>
-            <span onClick={() => setOpen(false)} style={{ cursor: 'pointer', color: T.textMuted, fontSize: 14 }}>✕</span>
+            <button
+              onClick={() => setOpen(false)}
+              style={{
+                cursor: 'pointer', color: T.textMuted, fontSize: 14,
+                width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 8, background: 'rgba(0,0,0,0.05)', border: 'none',
+              }}
+            >✕</button>
           </div>
 
+          {/* Empty state */}
           {chat.length === 0 && (
-            <div style={{ padding: 14, background: T.glass, borderRadius: 10, border: `1px solid ${T.glassBrd}`, marginBottom: 10 }}>
-              <div style={{ fontSize: 12, color: T.textSoft, lineHeight: 1.7, fontWeight: 300, marginBottom: 10 }}>
-                I have live access to your calendar, emails, Canvas, study materials, and all connections. Ask me anything.
+            <div style={{
+              padding: 14,
+              background: 'rgba(255,255,255,0.55)',
+              backdropFilter: 'blur(8px)',
+              borderRadius: 12,
+              border: '1px solid rgba(255,255,255,0.85)',
+              marginBottom: 12,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}>
+              <div style={{ fontSize: 12, color: T.textSoft, lineHeight: 1.75, marginBottom: 10 }}>
+                I know your full schedule, Canvas deadlines, emails, and study load. Tell me what you need — I&apos;ll get straight to the point.
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {suggestions.map((q) => (
-                  <button key={q} onClick={() => { setMsg(q); setTimeout(send, 50); }}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {SUGGESTIONS.map(q => (
+                  <button
+                    key={q}
+                    onClick={() => send(q)}
                     style={{
-                      padding: '5px 12px', background: T.bg, border: `1px solid ${T.border}`,
-                      borderRadius: 18, fontSize: 10, color: T.textSoft, cursor: 'pointer',
-                      transition: 'border-color 0.2s',
-                    }}>{q}</button>
+                      padding: '5px 12px',
+                      background: 'rgba(255,255,255,0.75)',
+                      border: '1px solid rgba(0,0,0,0.08)',
+                      borderRadius: 20, fontSize: 11, color: T.textSoft, cursor: 'pointer',
+                      fontWeight: 500, transition: 'background 0.15s',
+                    }}
+                  >{q}</button>
                 ))}
               </div>
             </div>
           )}
 
-          {chat.map((m, i) => (
-            <div key={i}>
-              <div style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 6 }}>
+          {/* Messages */}
+          {chat.map((m, i) => {
+            const isLastStreaming = m.streaming && i === chat.length - 1 && loading;
+            return (
+              <div key={i}>
                 <div style={{
-                  maxWidth: '85%', padding: '9px 14px',
-                  borderRadius: m.role === 'user' ? '12px 12px 3px 12px' : '12px 12px 12px 3px',
-                  background: m.role === 'user' ? `linear-gradient(135deg,${T.tealDk},${T.teal})` : T.bg3,
-                  color: m.role === 'user' ? '#fff' : T.text, fontSize: 12, lineHeight: 1.6,
-                  whiteSpace: 'pre-wrap',
-                }}>{m.content}</div>
-              </div>
-
-              {/* Action buttons */}
-              {m.actions && m.actions.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, paddingLeft: 4 }}>
-                  {m.actions.map((action, j) => {
-                    const key = `${i}-${action.type}`;
-                    const isExecuting = executingAction === key;
-                    return (
-                      <div key={j} style={{ display: 'flex', gap: 4 }}>
-                        <button
-                          onClick={() => executeAction(action, i)}
-                          disabled={isExecuting}
-                          style={{
-                            padding: '6px 12px', background: T.teal + '15', border: `1px solid ${T.tealBrd}`,
-                            borderRadius: 8, color: T.teal, fontSize: 10, fontWeight: 600, cursor: isExecuting ? 'wait' : 'pointer',
-                            opacity: isExecuting ? 0.5 : 1,
-                          }}
-                        >
-                          {isExecuting ? 'Executing...' : `Confirm: ${action.title || action.type}`}
-                        </button>
-                        <button
-                          onClick={() => setChat((c) => [...c, { role: 'assistant', content: 'Action dismissed.' }])}
-                          style={{
-                            padding: '6px 10px', background: 'transparent', border: `1px solid ${T.border}`,
-                            borderRadius: 8, color: T.textMuted, fontSize: 10, cursor: 'pointer',
-                          }}
-                        >Dismiss</button>
-                      </div>
-                    );
-                  })}
+                  display: 'flex',
+                  justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
+                  marginBottom: 6,
+                }}>
+                  <div style={{
+                    maxWidth: '84%',
+                    padding: '10px 14px',
+                    borderRadius: m.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                    background: m.role === 'user'
+                      ? `linear-gradient(135deg,${T.tealDk},${T.teal})`
+                      : 'rgba(255,255,255,0.78)',
+                    color: m.role === 'user' ? '#fff' : T.text,
+                    fontSize: 13, lineHeight: 1.65,
+                    whiteSpace: 'pre-wrap',
+                    boxShadow: m.role === 'user'
+                      ? `0 3px 12px ${T.tealGlow}`
+                      : '0 2px 8px rgba(0,0,0,0.06)',
+                    border: m.role === 'assistant' ? '1px solid rgba(255,255,255,0.9)' : 'none',
+                    minHeight: isLastStreaming && m.content === '' ? 38 : undefined,
+                    display: 'flex', alignItems: isLastStreaming && m.content === '' ? 'center' : 'flex-start',
+                  }}>
+                    {m.content === '' && isLastStreaming ? (
+                      // Thinking dots before first token arrives
+                      <span className="ai-thinking">
+                        <span /><span /><span />
+                      </span>
+                    ) : (
+                      <>
+                        {m.content}
+                        {isLastStreaming && <span className="ai-cursor" />}
+                      </>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
 
-          {loading && (
-            <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 6 }}>
-              <div style={{
-                padding: '9px 14px', borderRadius: '12px 12px 12px 3px',
-                background: T.bg3, color: T.textMuted, fontSize: 12,
-              }}>Thinking...</div>
-            </div>
-          )}
+                {/* Action buttons */}
+                {m.actions && m.actions.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, paddingLeft: 4 }}>
+                    {m.actions.map((action, j) => {
+                      const key = `${i}-${action.type}`;
+                      const isExec = executingAction === key;
+                      return (
+                        <div key={j} style={{ display: 'flex', gap: 4 }}>
+                          <button
+                            onClick={() => executeAction(action, i)}
+                            disabled={isExec}
+                            style={{
+                              padding: '7px 14px',
+                              background: T.teal + '18',
+                              border: `1px solid ${T.tealBrd}`,
+                              borderRadius: 10, color: T.teal, fontSize: 11, fontWeight: 600,
+                              cursor: isExec ? 'wait' : 'pointer',
+                              opacity: isExec ? 0.5 : 1,
+                            }}
+                          >{isExec ? 'Doing it…' : `Confirm: ${action.title || action.type}`}</button>
+                          <button
+                            onClick={() => setChat(c => [...c, { role: 'assistant', content: 'Dismissed.' }])}
+                            style={{
+                              padding: '7px 12px',
+                              background: 'rgba(255,255,255,0.5)',
+                              border: '1px solid rgba(0,0,0,0.08)',
+                              borderRadius: 10, color: T.textMuted, fontSize: 11, cursor: 'pointer',
+                            }}
+                          >Dismiss</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           <div ref={chatEndRef} />
         </div>
       )}
 
-      <div style={{ background: T.bg2, borderTop: `1px solid ${T.border}`, padding: '7px 10px', display: 'flex', gap: 6, width: '100%', maxWidth: 560 }}>
+      {/* ── Input bar ─────────────────────────────────────────────────────── */}
+      <div style={{
+        background: 'rgba(243,237,225,0.96)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderTop: '1px solid rgba(0,0,0,0.07)',
+        padding: '8px 12px',
+        display: 'flex', gap: 8,
+        boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
+      }}>
         <input
           ref={inputRef}
           value={msg}
-          onChange={(e) => setMsg(e.target.value)}
+          onChange={e => setMsg(e.target.value)}
           onFocus={() => setOpen(true)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-          placeholder="Ask AI anything...  ⌘K"
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+          placeholder="Ask your chief of staff…  ⌘K"
           disabled={loading}
           style={{
-            flex: 1, padding: '10px 14px', background: T.bg,
-            border: `1px solid ${T.tealBrd}`, borderRadius: 10,
-            color: T.text, fontSize: 12, outline: 'none',
-            opacity: loading ? 0.6 : 1,
+            flex: 1, padding: '11px 16px',
+            background: 'rgba(255,255,255,0.65)',
+            border: `1.5px solid ${msg ? T.tealBrd : 'rgba(0,0,0,0.08)'}`,
+            borderRadius: 12, color: T.text, fontSize: 13, outline: 'none',
+            opacity: loading ? 0.7 : 1,
+            transition: 'border-color 0.2s, box-shadow 0.2s',
+            boxShadow: msg ? `0 0 0 3px ${T.tealGlow}` : 'none',
           }}
         />
-        <button onClick={send} disabled={loading || !msg.trim()} style={{
-          padding: '10px 16px',
-          background: msg.trim() && !loading ? `linear-gradient(135deg,${T.tealDk},${T.teal})` : '#333',
-          color: msg.trim() && !loading ? '#fff' : '#666',
-          border: 'none', borderRadius: 10,
-          fontSize: 12, fontWeight: 600, cursor: msg.trim() && !loading ? 'pointer' : 'default',
-        }}>Send</button>
+        <button
+          onClick={() => send()}
+          disabled={loading || !msg.trim()}
+          style={{
+            padding: '11px 18px',
+            background: msg.trim() && !loading
+              ? `linear-gradient(135deg,${T.tealDk},${T.teal})`
+              : 'rgba(0,0,0,0.07)',
+            color: msg.trim() && !loading ? '#fff' : T.textMuted,
+            border: 'none', borderRadius: 12,
+            fontSize: 13, fontWeight: 600,
+            cursor: msg.trim() && !loading ? 'pointer' : 'default',
+            transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+            transform: msg.trim() && !loading ? 'scale(1)' : 'scale(0.96)',
+            boxShadow: msg.trim() && !loading ? `0 4px 14px ${T.tealGlow}` : 'none',
+          }}
+        >{loading ? '…' : 'Send'}</button>
       </div>
     </div>
   );

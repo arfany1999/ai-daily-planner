@@ -1,57 +1,291 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
-
-@import "tailwindcss";
+/* CSS reset — replaces @import "tailwindcss" for local dev compatibility */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
 
 :root {
-  --bg: #060608;
-  --bg2: #0c0c10;
-  --bg3: #131318;
-  --card: #0f0f14;
-  --border: rgba(255,255,255,0.06);
-  --text: #e8e6e1;
-  --text-soft: #a09d95;
-  --text-muted: #5e5c56;
-  --teal: #0d9b8a;
-  --teal-dk: #0a7a6d;
-  --teal-glow: rgba(13,155,138,0.08);
-  --teal-brd: rgba(13,155,138,0.2);
+  --bg: #f3ede1;
+  --bg2: #ede7d9;
+  --bg3: #e6dfc9;
+  --card: #f0ead8;
+  --border: rgba(0,0,0,0.07);
+  --text: #1a1510;
+  --text-soft: #6b5e4e;
+  --text-muted: #a09880;
+  --teal: #4a6ef5;
+  --teal-dk: #3a5be0;
+  --teal-glow: rgba(74,110,245,0.08);
+  --teal-brd: rgba(74,110,245,0.22);
   --orange: #e87b35;
-  --green: #3da55d;
-  --blue: #4a8fe7;
+  --green: #2ea84e;
+  --blue: #4a6ef5;
   --red: #e54d4d;
   --purple: #9b6ddb;
-  --yellow: #e8b83d;
-  --glass: rgba(255,255,255,0.03);
-  --glass-brd: rgba(255,255,255,0.06);
+  --yellow: #d4920a;
+  --glass: rgba(255,255,255,0.52);
+  --glass-brd: rgba(255,255,255,0.75);
 }
 
-* {
-  box-sizing: border-box;
-}
+/* box-sizing already set in reset above */
 
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Outfit', sans-serif;
+  font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
   margin: 0;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 input, textarea, button {
   font-family: inherit;
 }
 
+/* Glass morphism utility */
+.glass {
+  background: rgba(255,255,255,0.52);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.75);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.08);
-  border-radius: 3px;
+  background: rgba(0,0,0,0.12);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.22);
 }
+
+/* Spring animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes springIn {
+  from { opacity: 0; transform: scale(0.88) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.9); opacity: 0; }
+  60% { transform: scale(1.04); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.anim-fade { animation: fadeIn 0.3s ease both; }
+.anim-slide { animation: slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+.anim-spring { animation: springIn 0.45s cubic-bezier(0.34,1.56,0.64,1) both; }
+.anim-pop { animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both; }
+
+/* Card hover lift */
+.card-lift {
+  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease;
+}
+.card-lift:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+}
+.card-lift:active {
+  transform: scale(0.97);
+  transition-duration: 0.1s;
+}
+
+/* Text selection */
+::selection {
+  background: rgba(74,110,245,0.18);
+  color: #1a1510;
+}
+
+/* ── Responsive shell ────────────────────────────────────────────── */
+.app-sidebar {
+  display: none;
+}
+.bottom-nav-wrapper {
+  display: block;
+}
+.app-main-inner {
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  position: relative;
+  min-height: 100vh;
+}
+
+@media (min-width: 768px) {
+  .app-sidebar {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 220px;
+    background: rgba(238,232,218,0.97);
+    border-right: 1px solid rgba(0,0,0,0.07);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    z-index: 100;
+    overflow-y: auto;
+  }
+  .bottom-nav-wrapper {
+    display: none !important;
+  }
+  .top-nav-mobile-only {
+    display: none !important;
+  }
+  .app-main-inner {
+    max-width: 100%;
+    margin-left: 220px;
+    width: calc(100% - 220px);
+    min-height: 100vh;
+  }
+  .app-main-content {
+    max-width: 960px;
+    margin: 0 auto;
+    padding-bottom: 80px !important;
+  }
+}
+
+/* Home page: 2-column card grid on desktop */
+@media (min-width: 768px) {
+  .home-cards-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 14px !important;
+  }
+}
+
+/* AI bar: center within content area on desktop (account for 220px sidebar) */
+@media (min-width: 768px) {
+  .ai-bar-wrap {
+    left: calc(110px + 50vw) !important;
+    bottom: 0 !important;
+    max-width: 720px !important;
+  }
+}
+
+/* ── Calendar: fixed-position shell, escapes the scrollable <main> ── */
+
+/* Mobile: sits between top nav (58px) and bottom nav (80px) */
+.calendar-shell {
+  position: fixed;
+  top: 58px;
+  left: 0;
+  right: 0;
+  bottom: 80px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 5;
+  background: var(--bg);
+}
+
+/* Desktop: sits to the right of the 220px sidebar */
+@media (min-width: 768px) {
+  .calendar-shell {
+    top: 0;
+    left: 220px;
+    bottom: 0;
+    flex-direction: row;
+  }
+}
+
+/* Calendar left panel: hidden on mobile */
+.calendar-left-panel {
+  display: none;
+}
+@media (min-width: 768px) {
+  .calendar-left-panel {
+    display: flex !important;
+    flex-direction: column;
+    width: 260px;
+    flex-shrink: 0;
+    border-right: 1px solid rgba(0,0,0,0.07);
+    overflow-y: auto;
+    background: rgba(238,232,218,0.7);
+  }
+}
+
+/* Calendar right panel: fill remaining space as flex column */
+.calendar-right-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Dark mode ── */
+body.dark {
+  --bg: #1a1a1f;
+  --bg2: #22222a;
+  --bg3: #2a2a35;
+  --card: #252530;
+  --border: rgba(255,255,255,0.08);
+  --text: #f0eee8;
+  --text-soft: #a09888;
+  --text-muted: #6b6558;
+  --glass: rgba(30,30,40,0.7);
+  --glass-brd: rgba(255,255,255,0.1);
+}
+body.dark input, body.dark textarea {
+  background: var(--bg3);
+  color: var(--text);
+  border-color: var(--border);
+}
+body.dark button {
+  color: var(--text);
+}
+
+/* ── AI streaming animations ─────────────────────────────────────────────── */
+@keyframes ai-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+@keyframes ai-dot-bounce {
+  0%, 80%, 100% { transform: translateY(0);    opacity: 0.4; }
+  40%           { transform: translateY(-5px); opacity: 1;   }
+}
+
+/* Blinking cursor appended to streaming text */
+.ai-cursor::after {
+  content: '▋';
+  display: inline-block;
+  margin-left: 2px;
+  font-size: 0.85em;
+  color: #4a6ef5;
+  animation: ai-blink 0.9s step-end infinite;
+  vertical-align: baseline;
+}
+
+/* Three-dot thinking indicator */
+.ai-thinking {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ai-thinking span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #a09880;
+  animation: ai-dot-bounce 1.2s ease-in-out infinite;
+}
+.ai-thinking span:nth-child(2) { animation-delay: 0.15s; }
+.ai-thinking span:nth-child(3) { animation-delay: 0.30s; }

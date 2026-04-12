@@ -300,3 +300,26 @@ BEGIN
   DELETE FROM ai_conversations WHERE created_at < now() - interval '90 days';
 END;
 $$ LANGUAGE plpgsql;
+
+-- ===== PUSH NOTIFICATIONS =====
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  endpoint text UNIQUE NOT NULL,
+  subscription jsonb NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions(user_id);
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- ===== AGENTIC MODE =====
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS agentic_mode boolean DEFAULT false;
+
+-- ===== LIFE DOMAINS =====
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS domains jsonb DEFAULT '[
+  {"id":"academia","label":"Academia (RMIT)","icon":"🎓","weight":5,"enabled":true,"color":"#4a6ef5"},
+  {"id":"dev","label":"Dev Projects","icon":"💻","weight":4,"enabled":true,"color":"#0d9b8a"},
+  {"id":"finance","label":"Finance / Crypto","icon":"📈","weight":3,"enabled":true,"color":"#f5a623"},
+  {"id":"gym","label":"Health / Gym","icon":"🏋️","weight":3,"enabled":true,"color":"#27c77a"},
+  {"id":"personal","label":"Personal / Admin","icon":"🏠","weight":2,"enabled":true,"color":"#e94f4f"}
+]'::jsonb;

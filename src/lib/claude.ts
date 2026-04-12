@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-const API_TIMEOUT_MS = 30000; // 30 second timeout
+const API_TIMEOUT_MS = 55000; // 55 second timeout (Vercel max is 60s)
 
 let client: Anthropic | null = null;
 let aiAvailable = true;
@@ -25,7 +25,7 @@ export function isAiAvailable(): boolean {
 export async function generateWithClaude(
   systemPrompt: string,
   userMessage: string,
-  options?: { maxTokens?: number }
+  options?: { maxTokens?: number; model?: string }
 ): Promise<string> {
   if (!isAiAvailable()) {
     throw new Error('AI features are temporarily unavailable. Please try again later.');
@@ -40,7 +40,7 @@ export async function generateWithClaude(
   try {
     const response = await claude.messages.create(
       {
-        model: 'claude-sonnet-4-20250514',
+        model: options?.model || 'claude-sonnet-4-20250514',
         max_tokens: options?.maxTokens || 4096,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
@@ -62,7 +62,7 @@ export async function generateWithClaude(
       }
       // Handle timeout
       if (error.name === 'AbortError' || error.message.includes('abort')) {
-        throw new Error('AI request timed out after 30 seconds. Using cached data if available.');
+        throw new Error(`AI request timed out after ${Math.round(API_TIMEOUT_MS / 1000)} seconds. Try again.`);
       }
       // Handle rate limiting
       if (error.message.includes('rate') || error.message.includes('429')) {

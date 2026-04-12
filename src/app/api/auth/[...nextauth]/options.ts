@@ -15,7 +15,8 @@ export const authOptions: NextAuthOptions = {
             'https://www.googleapis.com/auth/gmail.readonly',
           ].join(' '),
           access_type: 'offline',
-          prompt: 'consent',
+          // Only force consent on first sign-in so returning users skip the warning screen
+          prompt: 'select_account',
         },
       },
     }),
@@ -24,6 +25,7 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, account, profile }) {
       if (account && token.email) {
+        // Fresh sign-in: store tokens and set userId
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
 
@@ -37,6 +39,14 @@ export const authOptions: NextAuthOptions = {
         if (account.access_token && account.refresh_token) {
           await storeUserTokens(token.email, account.access_token, account.refresh_token);
         }
+      } else if (token.email && !token.userId) {
+        // Existing session missing userId (JWT created before this field was added)
+        const userId = await getOrCreateUser(
+          token.email,
+          token.name || undefined,
+          token.picture || undefined
+        );
+        token.userId = userId;
       }
       return token;
     },

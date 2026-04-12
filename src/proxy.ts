@@ -5,6 +5,7 @@ import { getToken } from 'next-auth/jwt';
 // Public routes that don't require authentication
 const PUBLIC_PATHS = [
   '/api/auth',
+  '/api/cron',
   '/login',
   '/privacy',
   '/terms',
@@ -35,13 +36,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Redirect unauthenticated users to landing page
+  // Redirect unauthenticated users to login
   if (!token) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   return NextResponse.next();
 }
+
+// Next.js requires the middleware export to be named "middleware"
+export { proxy as middleware };
 
 export const config = {
   matcher: [

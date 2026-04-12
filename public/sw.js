@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ai-planner-v1';
+const CACHE_NAME = 'ai-planner-v3';
 const STATIC_ASSETS = [
   '/',
   '/login',

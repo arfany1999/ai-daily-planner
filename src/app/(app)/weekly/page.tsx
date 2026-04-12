@@ -30,6 +30,9 @@ export default function WeeklyPage() {
   const [loading, setLoading] = useState(true);
   const [stale, setStale] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [customPriorities, setCustomPriorities] = useState<string[]>([]);
+  const [newPriority, setNewPriority] = useState('');
+  const [addingPriority, setAddingPriority] = useState(false);
 
   useEffect(() => {
     fetch('/api/briefing')
@@ -42,7 +45,29 @@ export default function WeeklyPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    // Load custom priorities from localStorage
+    try {
+      const saved = localStorage.getItem('custom_priorities');
+      if (saved) setCustomPriorities(JSON.parse(saved));
+    } catch { /* ignore */ }
   }, []);
+
+  const addPriority = () => {
+    const text = newPriority.trim();
+    if (!text) return;
+    const updated = [...customPriorities, text];
+    setCustomPriorities(updated);
+    localStorage.setItem('custom_priorities', JSON.stringify(updated));
+    setNewPriority('');
+    setAddingPriority(false);
+  };
+
+  const removePriority = (i: number) => {
+    const updated = customPriorities.filter((_, idx) => idx !== i);
+    setCustomPriorities(updated);
+    localStorage.setItem('custom_priorities', JSON.stringify(updated));
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -138,16 +163,80 @@ export default function WeeklyPage() {
       </div>
 
       {/* Week priorities */}
-      {briefing.week_priorities?.length > 0 && (
-        <div style={{ background: T.card, border: `1px solid ${T.tealBrd}`, borderRadius: 12, padding: '12px 16px', marginBottom: 10 }}>
-          <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.teal, marginBottom: 8 }}>Week priorities</div>
-          {briefing.week_priorities.map((p, i) => (
-            <div key={i} style={{ fontSize: 12, color: T.text, lineHeight: 1.7, fontWeight: 300, display: 'flex', gap: 6, marginBottom: 2 }}>
-              <span style={{ color: T.teal }}>{'\u2022'}</span> {p}
-            </div>
-          ))}
+      <div style={{
+        background: 'rgba(255,255,255,0.52)', backdropFilter: 'blur(14px)',
+        border: `1px solid ${T.tealBrd}`, borderRadius: 14, padding: '14px 16px', marginBottom: 12,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: T.teal }}>
+            Week priorities
+          </div>
+          <button
+            onClick={() => setAddingPriority(!addingPriority)}
+            style={{
+              width: 24, height: 24, borderRadius: 7, border: `1px solid ${T.tealBrd}`,
+              background: addingPriority ? T.teal : T.tealGlow,
+              color: addingPriority ? '#fff' : T.teal,
+              fontSize: 16, fontWeight: 300, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              lineHeight: 1, transition: 'all 0.2s',
+            }}
+          >{addingPriority ? '×' : '+'}</button>
         </div>
-      )}
+
+        {/* AI-generated priorities */}
+        {briefing.week_priorities?.map((p, i) => (
+          <div key={i} style={{ fontSize: 13, color: T.text, lineHeight: 1.7, fontWeight: 400, display: 'flex', gap: 8, marginBottom: 3, alignItems: 'flex-start' }}>
+            <span style={{ color: T.teal, marginTop: 2, flexShrink: 0 }}>•</span> {p}
+          </div>
+        ))}
+
+        {/* User custom priorities */}
+        {customPriorities.map((p, i) => (
+          <div key={`c-${i}`} style={{ fontSize: 13, color: T.text, lineHeight: 1.7, fontWeight: 400, display: 'flex', gap: 8, marginBottom: 3, alignItems: 'flex-start' }}>
+            <span style={{ color: T.orange, marginTop: 2, flexShrink: 0 }}>★</span>
+            <span style={{ flex: 1 }}>{p}</span>
+            <button
+              onClick={() => removePriority(i)}
+              style={{ background: 'none', border: 'none', color: T.textMuted, cursor: 'pointer', fontSize: 11, padding: '0 2px', lineHeight: 1 }}
+            >×</button>
+          </div>
+        ))}
+
+        {/* Add input */}
+        {addingPriority && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+            <input
+              autoFocus
+              value={newPriority}
+              onChange={(e) => setNewPriority(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') addPriority(); if (e.key === 'Escape') { setAddingPriority(false); setNewPriority(''); } }}
+              placeholder="Add your own priority..."
+              style={{
+                flex: 1, padding: '8px 12px', fontSize: 12,
+                background: 'rgba(255,255,255,0.7)',
+                border: `1.5px solid ${T.tealBrd}`,
+                borderRadius: 9, color: T.text, outline: 'none',
+              }}
+            />
+            <button
+              onClick={addPriority}
+              disabled={!newPriority.trim()}
+              style={{
+                padding: '8px 14px', borderRadius: 9, border: 'none',
+                background: newPriority.trim() ? T.teal : 'rgba(0,0,0,0.08)',
+                color: newPriority.trim() ? '#fff' : T.textMuted,
+                fontSize: 12, fontWeight: 600, cursor: newPriority.trim() ? 'pointer' : 'default',
+              }}
+            >Add</button>
+          </div>
+        )}
+
+        {!briefing.week_priorities?.length && !customPriorities.length && !addingPriority && (
+          <div style={{ fontSize: 12, color: T.textMuted, fontStyle: 'italic' }}>No priorities yet. Tap + to add one.</div>
+        )}
+      </div>
 
       {/* Days */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

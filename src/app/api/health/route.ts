@@ -1,55 +1,60 @@
 import { NextResponse } from 'next/server';
-import { getUserTokens } from '@/lib/db';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/options';
+import { decrypt } from '@/lib/encryption';
 
 export async function GET() {
   const checks: Record<string, { status: string; message?: string }> = {};
 
-  // Check Supabase connection
-  try {
-    const { count, error } = await supabaseAdmin.from('users').select('*', { count: 'exact', head: true });
-    if (error) throw error;
-    checks.database = { status: 'ok', message: `${count} users` };
-  } catch (e) {
-    checks.database = { status: 'error', message: e instanceof Error ? e.message : 'Unknown' };
+  const session = await getServerSession(authOptions);
+  const userId = (session as unknown as Record<string, unknown>)?.userId as string | undefined;
+
+  // Run DB check + user data fetch in parallel
+  const [dbResult, userResult] = await Promise.allSettled([
+    supabaseAdmin.from('users').select('*', { count: 'exact', head: true }),
+    userId
+      ? supabaseAdmin
+          .from('users')
+          .select('google_access_token, google_refresh_token, canvas_connected')
+          .eq('id', userId)
+          .single()
+      : Promise.resolve(null),
+  ]);
+
+  // Database check
+  if (dbResult.status === 'fulfilled' && !dbResult.value.error) {
+    checks.database = { status: 'ok', message: `${dbResult.value.count} users` };
+  } else {
+    const err = dbResult.status === 'rejected' ? dbResult.reason : dbResult.value.error;
+    checks.database = { status: 'error', message: err?.message || 'Unknown' };
   }
 
-  // Check Google tokens for current user
-  try {
-    const session = await getServerSession(authOptions);
-    if (session?.user?.email) {
-      const { data: user } = await supabaseAdmin
-        .from('users')
-        .select('id')
-        .eq('email', session.user.email)
-        .single();
-
-      if (user) {
-        const tokens = await getUserTokens(user.id);
-        checks.google = tokens ? { status: 'ok' } : { status: 'not_configured', message: 'Sign in again to grant access.' };
-
-        // Check Canvas
-        const { data: canvasUser } = await supabaseAdmin
-          .from('users')
-          .select('canvas_connected')
-          .eq('id', user.id)
-          .single();
-        checks.canvas = canvasUser?.canvas_connected ? { status: 'ok' } : { status: 'not_configured', message: 'Canvas not connected' };
-      } else {
-        checks.google = { status: 'not_configured', message: 'User not found' };
-        checks.canvas = { status: 'not_configured' };
+  // Google + Canvas checks from single user row
+  if (!userId || !session?.user?.email) {
+    checks.google = { status: 'not_configured', message: 'Not signed in' };
+    checks.canvas = { status: 'not_configured' };
+  } else if (userResult.status === 'fulfilled' && userResult.value) {
+    const userData = (userResult.value as { data?: Record<string, unknown> | null }).data;
+    if (userData?.google_access_token) {
+      try {
+        decrypt(userData.google_access_token as string);
+        checks.google = { status: 'ok' };
+      } catch {
+        checks.google = { status: 'not_configured', message: 'Sign in again to grant access.' };
       }
     } else {
-      checks.google = { status: 'not_configured', message: 'Not signed in' };
-      checks.canvas = { status: 'not_configured' };
+      checks.google = { status: 'not_configured', message: 'Sign in again to grant access.' };
     }
-  } catch (e) {
-    checks.google = { status: 'error', message: e instanceof Error ? e.message : 'Unknown' };
+    checks.canvas = userData?.canvas_connected
+      ? { status: 'ok' }
+      : { status: 'not_configured', message: 'Canvas not connected' };
+  } else {
+    checks.google = { status: 'not_configured', message: 'User not found' };
+    checks.canvas = { status: 'not_configured' };
   }
 
-  // Check Anthropic API key (server-side, shared)
+  // Anthropic key (synchronous)
   checks.anthropic = process.env.ANTHROPIC_API_KEY
     ? { status: 'ok' }
     : { status: 'not_configured', message: 'ANTHROPIC_API_KEY not set' };

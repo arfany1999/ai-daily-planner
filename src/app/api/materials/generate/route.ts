@@ -2,45 +2,89 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-handler';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logError } from '@/lib/db';
-import { getCanvasToken } from '@/lib/canvas';
-import { extractTextFromFile, extractYouTubeTranscript } from '@/lib/extract';
 import { generateWithClaude } from '@/lib/claude';
 
-interface ModuleItem {
-  id: number;
-  title: string;
-  type: string;
-  content_id?: number;
-  external_url?: string;
-  html_url?: string;
+export const maxDuration = 60;
+
+// Attempt to fix truncated JSON by closing open brackets/arrays
+function repairJson(str: string): string {
+  // Trim to last complete top-level field value
+  // Find the deepest balanced position
+  const stack: string[] = [];
+  let inString = false;
+  let lastCompletePos = 0;
+
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    const prev = str[i - 1];
+
+    if (ch === '"' && prev !== '\\') {
+      inString = !inString;
+    }
+    if (!inString) {
+      if (ch === '{' || ch === '[') {
+        stack.push(ch);
+      } else if (ch === '}' || ch === ']') {
+        stack.pop();
+        if (stack.length === 0) lastCompletePos = i + 1;
+      } else if (ch === ',' && stack.length === 1) {
+        lastCompletePos = i; // last complete sibling
+      }
+    }
+  }
+
+  // Close any remaining open structures
+  let repaired = str.slice(0, lastCompletePos);
+  // Close unclosed string if needed
+  if (inString) repaired += '"';
+  // Close remaining stack
+  for (let i = stack.length - 1; i >= 0; i--) {
+    repaired += stack[i] === '{' ? '}' : ']';
+  }
+  return repaired;
 }
 
-interface CanvasFile {
-  id: number;
-  display_name: string;
-  filename: string;
-  url: string;
-  content_type: string;
-  size: number;
-  created_at: string;
+// Estimate current semester week from a Feb/Mar start
+function currentSemesterWeek(): number {
+  const now = new Date();
+  const year = now.getFullYear();
+  // Assume semester 1 starts late Feb (day 50 of year ≈ Feb 19)
+  const semStart = new Date(year, 1, 19); // Feb 19
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  const week = Math.ceil((now.getTime() - semStart.getTime()) / msPerWeek);
+  return Math.max(1, Math.min(week, 16));
 }
 
-export const POST = withAuth(async (_req, userId) => {
-  const results: { file: string; status: string; error?: string }[] = [];
-
+export const POST = withAuth(async (req, userId) => {
   try {
-    // Load canvas cache to find files
+    // Allow caller to request specific course/week, or generate all
+    let body: { course?: string; week?: number; forceAll?: boolean } = {};
+    try { body = await req.json(); } catch { /* no body */ }
+
+    // Load canvas cache
     const { data: canvasCache } = await supabaseAdmin
       .from('canvas_cache')
       .select('data')
       .eq('user_id', userId)
       .single();
-    if (!canvasCache) {
-      return NextResponse.json({ error: 'No Canvas data. Fetch /api/canvas first.' }, { status: 400 });
+
+    if (!canvasCache?.data) {
+      return NextResponse.json({ error: 'No Canvas data cached. Visit the Canvas page first.' }, { status: 400 });
     }
 
-    const canvas = canvasCache.data as { module_items?: { course_id: number; course_name: string; items: ModuleItem[] }[] };
-    const token = await getCanvasToken(userId);
+    const canvas = canvasCache.data as {
+      courses?: { id: number; name: string; course_code: string }[];
+      assignments?: { name: string; course_name: string; due_at: string | null; has_submitted_submissions: boolean }[];
+      announcements?: { title: string; message: string; posted_at: string; course_name: string }[];
+    };
+
+    const courses = canvas.courses || [];
+    const assignments = canvas.assignments || [];
+    const announcements = canvas.announcements || [];
+
+    if (courses.length === 0) {
+      return NextResponse.json({ error: 'No courses found in Canvas data.' }, { status: 400 });
+    }
 
     // Get custom prompt
     const { data: promptRow } = await supabaseAdmin
@@ -50,184 +94,210 @@ export const POST = withAuth(async (_req, userId) => {
       .eq('card_key', 'materials')
       .single();
     const customPrompt = promptRow?.prompt_text ||
-      "Generate study materials for a 2nd-year pharmacy student: key concepts, detailed notes, pharmacy connections, 10 MCQs, 10 flashcards, exam traps.";
+      'Generate study materials for a 2nd-year pharmacy student. Be comprehensive and exam-focused.';
 
-    // Collect all processable items: files from modules + YouTube links
-    const toProcess: { id: string; name: string; courseId: number; courseName: string; type: 'file' | 'youtube'; url: string }[] = [];
+    const currentWeek = currentSemesterWeek();
 
-    for (const mod of canvas.module_items || []) {
-      for (const item of mod.items) {
-        if (item.type === 'File' && item.content_id) {
-          const fileId = `file_${item.content_id}`;
-          const { data: alreadyProcessed } = await supabaseAdmin
-            .from('processed_files')
-            .select('canvas_file_id')
+    // Whitelist: only generate materials for these 4 pharmacy subjects
+    const STUDY_COURSES = /microbiol|molecular\s*(biology)?|essentials?\s*of\s*pharmacy|professional\s*practice/i;
+    const studyCourses = courses.filter(c => STUDY_COURSES.test(c.name));
+
+    // Determine which courses/weeks to generate
+    const targetCourses = body.course
+      ? courses.filter(c => c.name === body.course)
+      : studyCourses;
+    // Default: current week only. Use week param for specific week, forceAll for current+previous.
+    const weeksToGenerate = body.week
+      ? [body.week]
+      : body.forceAll
+        ? [currentWeek, Math.max(1, currentWeek - 1)]
+        : [currentWeek];
+
+    // Build list of jobs to run
+    type Job = { course: typeof courses[0]; week: number };
+    const jobs: Job[] = [];
+
+    for (const course of targetCourses) {
+      for (const week of weeksToGenerate) {
+        if (!body.forceAll) {
+          const { data: existing } = await supabaseAdmin
+            .from('materials')
+            .select('id')
             .eq('user_id', userId)
-            .eq('canvas_file_id', fileId)
+            .eq('course', course.name)
+            .eq('week', week)
             .single();
-          if (!alreadyProcessed) {
-            toProcess.push({
-              id: fileId,
-              name: item.title,
-              courseId: mod.course_id,
-              courseName: mod.course_name,
-              type: 'file',
-              url: `https://rmit.instructure.com/api/v1/files/${item.content_id}`,
-            });
-          }
+          if (existing) continue; // will report as skipped below
         }
-        if (item.type === 'ExternalUrl' && item.external_url?.includes('youtube')) {
-          const ytId = `yt_${item.id}`;
-          const { data: alreadyProcessed } = await supabaseAdmin
-            .from('processed_files')
-            .select('canvas_file_id')
-            .eq('user_id', userId)
-            .eq('canvas_file_id', ytId)
-            .single();
-          if (!alreadyProcessed) {
-            toProcess.push({
-              id: ytId,
-              name: item.title,
-              courseId: mod.course_id,
-              courseName: mod.course_name,
-              type: 'youtube',
-              url: item.external_url,
-            });
-          }
-        }
+        jobs.push({ course, week });
       }
     }
 
-    if (toProcess.length === 0) {
-      return NextResponse.json({ message: 'No new files to process', processed: 0, results: [] });
-    }
+    // Count skipped
+    const totalCombinations = targetCourses.length * weeksToGenerate.length;
+    const skipped = totalCombinations - jobs.length;
 
-    // Process each item
-    for (const item of toProcess) {
-      try {
-        let text = '';
+    // Build prompt for a single course/week
+    const buildPrompts = (course: typeof courses[0], week: number) => {
+      const courseAssignments = assignments
+        .filter(a => a.course_name === course.name)
+        .map(a => ({
+          name: a.name,
+          due_at: a.due_at,
+          submitted: a.has_submitted_submissions,
+          days_until: a.due_at ? Math.ceil((new Date(a.due_at).getTime() - Date.now()) / 86400000) : null,
+        }))
+        .slice(0, 15);
 
-        if (item.type === 'youtube') {
-          text = await extractYouTubeTranscript(item.url);
-          if (!text) {
-            results.push({ file: item.name, status: 'skipped', error: 'No transcript available' });
-            await supabaseAdmin.from('processed_files').insert({ user_id: userId, canvas_file_id: item.id });
-            continue;
-          }
-        } else {
-          // Get file metadata from Canvas
-          const fileRes = await fetch(item.url, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!fileRes.ok) {
-            results.push({ file: item.name, status: 'error', error: `Canvas API ${fileRes.status}` });
-            continue;
-          }
-          const fileMeta = await fileRes.json() as CanvasFile;
+      const courseAnnouncements = announcements
+        .filter(a => a.course_name === course.name)
+        .map(a => ({
+          title: a.title,
+          preview: a.message?.replace(/<[^>]*>/g, '').slice(0, 300),
+          date: a.posted_at,
+        }))
+        .slice(0, 10);
 
-          // Skip very large files (>10MB) or unsupported types
-          if (fileMeta.size > 10 * 1024 * 1024) {
-            results.push({ file: item.name, status: 'skipped', error: 'File too large (>10MB)' });
-            await supabaseAdmin.from('processed_files').insert({ user_id: userId, canvas_file_id: item.id });
-            continue;
-          }
-
-          text = await extractTextFromFile(fileMeta.url, fileMeta.content_type, fileMeta.filename, token);
-        }
-
-        if (!text || text.trim().length < 50) {
-          results.push({ file: item.name, status: 'skipped', error: 'Insufficient text content' });
-          await supabaseAdmin.from('processed_files').insert({ user_id: userId, canvas_file_id: item.id });
-          continue;
-        }
-
-        // Determine week number from file name or date
-        const weekMatch = item.name.match(/(?:week|wk|w)\s*(\d+)/i);
-        const week = weekMatch ? parseInt(weekMatch[1]) : estimateWeek(item.name);
-
-        // Send to Claude for material generation
-        const systemPrompt = `You are an AI study material generator for a university student.
+      const systemPrompt = `You are an expert study material generator for a 2nd-year pharmacy student at RMIT University.
 
 ${customPrompt}
 
-Return ONLY valid JSON with this exact structure:
+REQUIREMENTS (keep each item SHORT to fit within token budget):
+- 5 key concepts (1 line each)
+- 4 detailed notes (1 sentence each, exam-focused)
+- 6 MCQs with 4 options + 1-line explanation
+- 8 flashcards (term: 2-5 words, definition: 1 sentence)
+- 3 exam traps (1 sentence each)
+- 2 pharmacy_connections (1 sentence each)
+- Infer week ${week} topics from course name and assignments
+- IMPORTANT: Keep all text concise to fit the token budget. Complete the JSON fully.
+
+Return ONLY valid JSON:
 {
+  "week_topic": "Inferred topic for week ${week}",
   "key_concepts": ["concept 1", "concept 2", ...],
-  "detailed_notes": ["note 1 with explanation", "note 2 with explanation", ...],
-  "pharmacy_connections": ["how this connects to pharmacy practice", ...],
+  "detailed_notes": ["Full explanatory note 1", ...],
+  "pharmacy_connections": ["Practical pharmacy connection", ...],
   "mcqs": [
-    {"question": "...", "options": ["A", "B", "C", "D"], "correct_answer": 1, "explanation": "..."},
-    ...
+    {
+      "question": "Question text?",
+      "options": ["A. option", "B. option", "C. option", "D. option"],
+      "correct_answer": 0,
+      "explanation": "Why this is correct and others are wrong"
+    }
   ],
   "flashcards": [
-    {"term": "...", "definition": "..."},
-    ...
+    { "term": "Term", "definition": "Precise definition" }
   ],
-  "exam_traps": ["common mistake or tricky concept to watch for", ...]
+  "exam_traps": ["Common mistake or misconception to avoid"]
 }`;
 
-        const userMsg = `Generate study materials from this lecture content.
+      const userMsg = `Generate comprehensive Week ${week} study materials for this course.
 
-Course: ${item.courseName}
-File: ${item.name}
-${item.type === 'youtube' ? 'Source: YouTube transcript' : ''}
+COURSE: ${course.name} (${course.course_code})
+CURRENT SEMESTER WEEK: ${currentWeek}
+TARGET WEEK: ${week}
 
-CONTENT:
-${text}`;
+ASSIGNMENTS IN THIS COURSE:
+${JSON.stringify(courseAssignments, null, 2)}
 
-        const response = await generateWithClaude(systemPrompt, userMsg, { maxTokens: 4096 });
+RECENT ANNOUNCEMENTS:
+${JSON.stringify(courseAnnouncements, null, 2)}
 
-        // Parse JSON
-        const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, response];
-        const jsonStr = jsonMatch[1]?.trim() || response.trim();
+Based on the course name, assignments, and announcements, infer what topics would be covered in Week ${week} and generate rich, exam-focused study materials.`;
+
+      return { systemPrompt, userMsg };
+    };
+
+    // Process 1 job per request — Claude can take up to 55s, so 1 call fits in 60s Vercel timeout
+    const jobsToRun = jobs.slice(0, 1);
+    const remaining = jobs.length - jobsToRun.length;
+
+    // Run 2 jobs in parallel
+    const results: { course: string; week: number; status: string; error?: string }[] = [];
+
+    const processJob = async (course: typeof courses[0], week: number) => {
+      try {
+        const { systemPrompt, userMsg } = buildPrompts(course, week);
+        const response = await generateWithClaude(systemPrompt, userMsg, {
+          maxTokens: 2500,
+          model: 'claude-sonnet-4-6',
+        });
+
+        // Extract JSON: try code block first, then brace-boundary extraction
+        let jsonStr: string;
+        const codeBlock = response.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (codeBlock?.[1]) {
+          jsonStr = codeBlock[1].trim();
+        } else {
+          // Find first { to last } to handle trailing text after JSON
+          const firstBrace = response.indexOf('{');
+          const lastBrace = response.lastIndexOf('}');
+          jsonStr = firstBrace !== -1 && lastBrace > firstBrace
+            ? response.slice(firstBrace, lastBrace + 1)
+            : response.trim();
+        }
 
         let materials;
         try {
           materials = JSON.parse(jsonStr);
         } catch {
-          await logError('materials/generate/parse', `Failed to parse for ${item.name}`, userId);
-          materials = { raw: response, key_concepts: [], detailed_notes: [], mcqs: [], flashcards: [], exam_traps: [] };
+          // Try to repair truncated JSON by closing open structures
+          jsonStr = repairJson(jsonStr);
+          try {
+            materials = JSON.parse(jsonStr);
+          } catch {
+            await logError('materials/generate/parse', `Parse failed for ${course.name} week ${week}`, userId);
+            results.push({ course: course.name, week, status: 'error', error: 'JSON parse failed' });
+            return;
+          }
         }
 
-        // Save to database
+        const sourceFile = materials.week_topic || `Week ${week} — AI Generated`;
+
+        if (body.forceAll) {
+          await supabaseAdmin
+            .from('materials')
+            .delete()
+            .eq('user_id', userId)
+            .eq('course', course.name)
+            .eq('week', week);
+        }
+
         await supabaseAdmin.from('materials').insert({
           user_id: userId,
-          course: item.courseName,
+          course: course.name,
           week,
-          source_file: item.name,
-          source_type: item.type,
+          source_file: sourceFile,
+          source_type: 'ai_generated',
           content: materials,
         });
 
-        // Mark as processed
-        await supabaseAdmin.from('processed_files').insert({ user_id: userId, canvas_file_id: item.id });
-
-        results.push({ file: item.name, status: 'success' });
+        results.push({ course: course.name, week, status: 'success' });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Unknown error';
-        await logError('materials/generate/item', `${item.name}: ${msg}`, userId);
-        results.push({ file: item.name, status: 'error', error: msg });
+        const msg = e instanceof Error ? e.message : 'Unknown';
+        await logError('materials/generate/item', `${course.name} week ${week}: ${msg}`, userId);
+        results.push({ course: course.name, week, status: 'error', error: msg });
       }
-    }
+    };
 
+    if (jobsToRun.length > 0) await processJob(jobsToRun[0].course, jobsToRun[0].week);
+
+    const succeeded = results.filter(r => r.status === 'success').length;
     return NextResponse.json({
-      message: `Processed ${results.filter((r) => r.status === 'success').length} of ${toProcess.length} files`,
-      processed: results.filter((r) => r.status === 'success').length,
-      total: toProcess.length,
+      message: succeeded > 0
+        ? `Generated ${succeeded} set${succeeded !== 1 ? 's' : ''}${remaining > 0 ? ` — ${remaining} more pending, click again` : ' — all done!'}${skipped > 0 ? ` (${skipped} already existed)` : ''}`
+        : jobs.length === 0
+          ? 'All up to date — use "↻ Regenerate All" to force refresh.'
+          : 'Generation failed — check logs.',
+      generated: succeeded,
+      skipped,
+      remaining,
       results,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
     await logError('materials/generate', msg, userId);
-    return NextResponse.json({ error: 'Failed to generate materials', message: msg }, { status: 500 });
+    return NextResponse.json({ error: 'Failed', message: msg }, { status: 500 });
   }
 });
-
-function estimateWeek(filename: string): number {
-  const numMatch = filename.match(/(\d+)/);
-  if (numMatch) {
-    const n = parseInt(numMatch[1]);
-    if (n >= 1 && n <= 15) return n;
-  }
-  return 0;
-}

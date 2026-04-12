@@ -22,7 +22,9 @@ export default function MaterialsPage() {
   const [data, setData] = useState<CourseGroup[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [genResult, setGenResult] = useState('');
+  const [genError, setGenError] = useState(false);
   const [courseTab, setCourseTab] = useState(0);
   const [weekTab, setWeekTab] = useState(0);
   const [mcqAns, setMcqAns] = useState<Record<string, number>>({});
@@ -44,21 +46,59 @@ export default function MaterialsPage() {
       .catch(() => setLoading(false));
   }, []);
 
+  const refreshData = async () => {
+    const mr = await fetch('/api/materials');
+    const md = await mr.json();
+    if (md.materials?.length > 0) setData(md.materials);
+  };
+
   const handleGenerate = async () => {
     setGenerating(true);
-    setGenResult('');
+    setGenResult('Generating...');
+    setGenError(false);
+    let totalGenerated = 0;
     try {
-      const r = await fetch('/api/materials/generate', { method: 'POST' });
-      const d = await r.json();
-      setGenResult(d.message || d.error || 'Done');
-      // Refresh materials list
-      const mr = await fetch('/api/materials');
-      const md = await mr.json();
-      if (md.materials?.length > 0) setData(md.materials);
+      // Keep calling until no more pending (batches of 2 to stay within 60s timeout)
+      for (let i = 0; i < 10; i++) {
+        const r = await fetch('/api/materials/generate', { method: 'POST' });
+        const d = await r.json();
+        if (!r.ok) { setGenResult(d.error || 'Failed'); setGenError(true); break; }
+        totalGenerated += d.generated || 0;
+        setGenResult(`Generated ${totalGenerated} set${totalGenerated !== 1 ? 's' : ''} so far...`);
+        await refreshData();
+        if (!d.remaining || d.remaining === 0) {
+          setGenResult(totalGenerated > 0
+            ? `Done! Generated ${totalGenerated} course/week set${totalGenerated !== 1 ? 's' : ''}.`
+            : d.message || 'All up to date.');
+          break;
+        }
+      }
     } catch {
       setGenResult('Failed to generate materials');
+      setGenError(true);
     }
     setGenerating(false);
+  };
+
+  const handleRegenerateAll = async () => {
+    setRegenerating(true);
+    setGenResult('');
+    setGenError(false);
+    try {
+      const r = await fetch('/api/materials/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ forceAll: true }),
+      });
+      const d = await r.json();
+      setGenResult(d.message || d.error || 'Done');
+      setGenError(!r.ok);
+      await refreshData();
+    } catch {
+      setGenResult('Failed to regenerate materials');
+      setGenError(true);
+    }
+    setRegenerating(false);
   };
 
   const flipCard = (key: string) => {
@@ -88,22 +128,29 @@ export default function MaterialsPage() {
         <PageHeader title="Study Materials" subtitle="AI-generated from Canvas" />
 
         {/* Generate + Export buttons */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <button onClick={handleGenerate} disabled={generating} style={{
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <button onClick={handleGenerate} disabled={generating || regenerating} style={{
             padding: '8px 16px', background: T.tealGlow, border: `1px solid ${T.tealBrd}`,
-            borderRadius: 8, color: T.teal, fontSize: 11, fontWeight: 600, cursor: generating ? 'wait' : 'pointer',
-            opacity: generating ? 0.5 : 1,
+            borderRadius: 8, color: T.teal, fontSize: 11, fontWeight: 600, cursor: (generating || regenerating) ? 'wait' : 'pointer',
+            opacity: (generating || regenerating) ? 0.5 : 1,
           }}>
-            {generating ? 'Generating...' : 'Process New Files'}
+            {generating ? 'Generating...' : '+ New Weeks'}
+          </button>
+          <button onClick={handleRegenerateAll} disabled={generating || regenerating} style={{
+            padding: '8px 16px', background: T.orange + '12', border: `1px solid ${T.orange}40`,
+            borderRadius: 8, color: T.orange, fontSize: 11, fontWeight: 600, cursor: (generating || regenerating) ? 'wait' : 'pointer',
+            opacity: (generating || regenerating) ? 0.5 : 1,
+          }}>
+            {regenerating ? 'Regenerating all...' : '↻ Regenerate All'}
           </button>
           <a href={`/api/materials/export?format=zip`} style={{
             padding: '8px 16px', background: T.glass, border: `1px solid ${T.glassBrd}`,
             borderRadius: 8, color: T.textSoft, fontSize: 11, fontWeight: 500, textDecoration: 'none',
-            display: 'inline-flex', alignItems: 'center',
+            display: 'inline-flex', alignItems: 'center', marginLeft: 'auto',
           }}>Export ZIP</a>
         </div>
         {genResult && (
-          <div style={{ marginBottom: 10, fontSize: 11, color: T.teal, background: T.tealGlow, padding: '8px 12px', borderRadius: 8, border: `1px solid ${T.tealBrd}` }}>
+          <div style={{ marginBottom: 10, fontSize: 11, color: genError ? T.red : T.teal, background: genError ? T.red + '10' : T.tealGlow, padding: '8px 12px', borderRadius: 8, border: `1px solid ${genError ? T.red + '30' : T.tealBrd}` }}>
             {genResult}
           </div>
         )}
@@ -135,6 +182,13 @@ export default function MaterialsPage() {
                   cursor: 'pointer', fontWeight: weekTab === i ? 600 : 400,
                 }}>Wk {w.week || '?'}</button>
             ))}
+          </div>
+        )}
+
+        {/* Week topic */}
+        {week?.materials?.[0]?.source_file && (
+          <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 10, fontStyle: 'italic' }}>
+            {week.materials[0].source_file}
           </div>
         )}
 
@@ -281,16 +335,19 @@ export default function MaterialsPage() {
       {loading && <div style={{ textAlign: 'center', padding: 20, color: T.textMuted, fontSize: 12 }}>Loading...</div>}
 
       {!loading && (
-        <button onClick={handleGenerate} disabled={generating} style={{
-          width: '100%', padding: '10px 0', marginBottom: 12,
-          background: T.tealGlow, border: `1px solid ${T.tealBrd}`, borderRadius: 10,
-          color: T.teal, fontSize: 12, fontWeight: 600, cursor: generating ? 'wait' : 'pointer',
-        }}>
-          {generating ? 'Processing Canvas files...' : 'Generate from Canvas'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <button onClick={handleGenerate} disabled={generating || regenerating} style={{
+            flex: 1, padding: '10px 0',
+            background: T.tealGlow, border: `1px solid ${T.tealBrd}`, borderRadius: 10,
+            color: T.teal, fontSize: 12, fontWeight: 600, cursor: (generating || regenerating) ? 'wait' : 'pointer',
+            opacity: (generating || regenerating) ? 0.5 : 1,
+          }}>
+            {generating ? 'Generating...' : 'Generate from Canvas'}
+          </button>
+        </div>
       )}
       {genResult && (
-        <div style={{ marginBottom: 10, fontSize: 11, color: T.teal, background: T.tealGlow, padding: '8px 12px', borderRadius: 8, border: `1px solid ${T.tealBrd}` }}>
+        <div style={{ marginBottom: 10, fontSize: 11, color: genError ? T.red : T.teal, background: genError ? T.red + '10' : T.tealGlow, padding: '8px 12px', borderRadius: 8, border: `1px solid ${genError ? T.red + '30' : T.tealBrd}` }}>
           {genResult}
         </div>
       )}
