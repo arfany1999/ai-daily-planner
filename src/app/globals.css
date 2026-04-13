@@ -59,7 +59,7 @@
   color-scheme: dark;
 }
 
-/* ── Body — grid + glow baked into background ── */
+/* ── Body ── */
 body {
   color: var(--text);
   font-family: 'Inter', -apple-system, 'Helvetica Neue', Arial, sans-serif;
@@ -68,13 +68,21 @@ body {
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   background-color: #0C0B09;
-  background-image:
+}
+
+/* ── Fixed grid + glow (stays in place while content scrolls over it) ── */
+#dispatch-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
     radial-gradient(ellipse at 50% 30%, rgba(180,100,50,0.09) 0%, transparent 55%),
     radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.5) 100%),
     linear-gradient(to right, rgba(180,100,50,0.07) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(180,100,50,0.07) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
-  background-attachment: fixed;
+  background-color: #0C0B09;
 }
 
 input, textarea, button {
