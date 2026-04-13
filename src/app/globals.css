@@ -244,112 +244,205 @@ input, textarea, button {
 
 /* ── Dark mode ── */
 body.dark {
-  --bg: #131316;
-  --bg2: #1a1a20;
-  --bg3: #222228;
-  --card: #1e1e25;
-  --border: rgba(255,255,255,0.08);
-  --text: #e8e6e1;
-  --text-soft: #9a9488;
-  --text-muted: #6b6558;
-  --teal: #5b7fff;
-  --teal-dk: #4a6ef5;
-  --teal-glow: rgba(91,127,255,0.12);
-  --teal-brd: rgba(91,127,255,0.25);
-  --glass: rgba(20,20,28,0.78);
-  --glass-brd: rgba(255,255,255,0.08);
-  --surface: rgba(30,30,40,0.6);
-  --surface-hover: rgba(255,255,255,0.06);
-  --surface-input: rgba(30,30,40,0.65);
-  --nav-bg: rgba(19,19,22,0.88);
-  --nav-bg-solid: rgba(19,19,22,0.98);
-  --bottom-nav-bg: rgba(19,19,22,0.92);
-  --ai-bar-bg: rgba(19,19,22,0.96);
-  --subtle-border: rgba(255,255,255,0.06);
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.2);
-  --shadow-md: 0 8px 32px rgba(0,0,0,0.3);
-  --shadow-lg: 0 16px 48px rgba(0,0,0,0.4);
+  /* Surfaces — layered depth, not flat black */
+  --bg: #0c0c10;
+  --bg2: #141418;
+  --bg3: #1c1c22;
+  --card: #18181e;
+  --border: rgba(255,255,255,0.07);
+
+  /* Text — warm off-whites with clear hierarchy */
+  --text: #eae8e3;
+  --text-soft: #b0aaa0;
+  --text-muted: #787068;
+
+  /* Accent — brighter for dark backgrounds */
+  --teal: #6b8aff;
+  --teal-dk: #5b7aef;
+  --teal-glow: rgba(107,138,255,0.15);
+  --teal-brd: rgba(107,138,255,0.28);
+  --orange: #f09050;
+  --green: #3dbe60;
+  --blue: #6b8aff;
+  --red: #f06060;
+  --purple: #b088f0;
+  --yellow: #e8a830;
+
+  /* Glass / surfaces */
+  --glass: rgba(18,18,24,0.82);
+  --glass-brd: rgba(255,255,255,0.06);
+  --surface: rgba(24,24,32,0.7);
+  --surface-hover: rgba(255,255,255,0.05);
+  --surface-input: rgba(28,28,36,0.8);
+
+  /* Shell */
+  --nav-bg: rgba(12,12,16,0.92);
+  --nav-bg-solid: rgba(12,12,16,0.98);
+  --bottom-nav-bg: rgba(12,12,16,0.94);
+  --ai-bar-bg: rgba(12,12,16,0.96);
+  --subtle-border: rgba(255,255,255,0.05);
+
+  /* Shadows — deeper for dark surfaces */
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-md: 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.5);
+
   color-scheme: dark;
 }
+
+/* ── Dark mode element overrides ── */
 body.dark input, body.dark textarea {
-  background: var(--bg3);
-  color: var(--text);
-  border-color: var(--border);
+  background: var(--bg3) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
 }
 body.dark button {
   color: var(--text);
 }
 body.dark ::selection {
-  background: rgba(91,127,255,0.3);
-  color: #e8e6e1;
+  background: rgba(107,138,255,0.35);
+  color: #eae8e3;
 }
 body.dark ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.10);
 }
 body.dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.22);
+  background: rgba(255,255,255,0.18);
 }
 body.dark .app-sidebar {
-  background: rgba(20,20,28,0.97);
-  border-color: rgba(255,255,255,0.06);
+  background: rgba(14,14,18,0.97) !important;
+  border-color: rgba(255,255,255,0.05) !important;
 }
 body.dark .card-lift:hover {
-  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
 }
 body.dark img {
-  filter: brightness(0.92);
+  filter: brightness(0.9);
+}
+body.dark .glass {
+  background: var(--glass) !important;
+  border-color: var(--glass-brd) !important;
 }
 
-/* ── Dark mode overrides for inline styles ── */
-/* These catch rgba(255,255,255,...) and rgba(0,0,0,...) patterns in inline styles */
-body.dark [style*="rgba(255,255,255"] {
-  --tw-bg-opacity: 1;
-}
-body.dark [style*="rgba(243,237,225"] {
-  --tw-bg-opacity: 1;
-}
+/* ── Dark mode: fix ALL hardcoded inline colors ── */
 
-/* Home page cards, all containers with white glass backgrounds */
+/* White/light backgrounds → dark surface */
+body.dark [style*="background: rgba(255,255,255"],
+body.dark [style*="background: rgba(243,237,225"],
+body.dark [style*="background: rgba(240,234,216"],
+body.dark [style*="background: rgba(238,232,218"] {
+  background: var(--surface) !important;
+}
 body.dark .app-main-content [style*="background: rgba(255,255,255"] {
   background: var(--surface) !important;
   border-color: var(--border) !important;
 }
-body.dark .app-main-content [style*="background: linear-gradient(135deg, rgba(74"] {
+
+/* Light-mode gradients → dark surface */
+body.dark [style*="background: linear-gradient(135deg, rgba(74,110"],
+body.dark [style*="background: linear-gradient(135deg, rgba(240,170"],
+body.dark [style*="background: linear-gradient(135deg, rgba(230,120"],
+body.dark [style*="background: linear-gradient(135deg, rgba(124,58"] {
   background: var(--surface) !important;
 }
-body.dark .app-main-content [style*="background: linear-gradient(135deg, rgba(240"] {
-  background: var(--surface) !important;
+
+/* Inset/white shadows → dark shadows */
+body.dark [style*="inset 0 1px 0 rgba(255"] {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
 }
-/* Boxes with white-ish inset shadows */
-body.dark .app-main-content [style*="inset 0 1px 0 rgba(255"] {
-  box-shadow: 0 4px 24px rgba(0,0,0,0.3) !important;
+body.dark [style*="boxShadow: 0 4px 24px rgba(0,0,0,0.07"] {
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4) !important;
 }
-/* Fix dark text on dark bg — brighten muted/soft text in dark mode */
-body.dark [style*="color: #1a1510"] {
+
+/* Dark text on dark background — remap to dark theme text */
+body.dark [style*="color: #1a1510"],
+body.dark [style*="color: #3d3530"],
+body.dark [style*="color: #2a2a30"],
+body.dark [style*="color: #3a3a40"] {
   color: var(--text) !important;
 }
 body.dark [style*="color: #6b5e4e"],
-body.dark [style*="color: #6b6358"],
-body.dark [style*="color: #3d3530"] {
+body.dark [style*="color: #6b6358"] {
   color: var(--text-soft) !important;
 }
 body.dark [style*="color: #a09880"] {
   color: var(--text-muted) !important;
 }
-/* Fix avatar borders in dark mode */
+
+/* Specific accent colors — brighten for dark mode */
+body.dark [style*="color: #e67832"],
+body.dark [style*="color: #c07828"] {
+  color: #f09050 !important;
+}
+body.dark [style*="color: #e94f4f"],
+body.dark [style*="color: #e54d4d"],
+body.dark [style*="color: #c0392b"] {
+  color: #f06060 !important;
+}
+body.dark [style*="color: #27c77a"] {
+  color: #3dbe60 !important;
+}
+
+/* White borders → subtle dark borders */
 body.dark [style*="border: 2.5px solid rgba(255,255,255"],
-body.dark [style*="border: 2px solid rgba(255,255,255"] {
-  border-color: rgba(255,255,255,0.15) !important;
+body.dark [style*="border: 2px solid rgba(255,255,255"],
+body.dark [style*="border: 1px solid rgba(255,255,255"],
+body.dark [style*="border: 1.5px solid rgba(255,255,255"] {
+  border-color: rgba(255,255,255,0.08) !important;
 }
+body.dark [style*="border-bottom: 1px solid rgba(0,0,0"],
+body.dark [style*="border-top: 1px solid rgba(0,0,0"],
+body.dark [style*="borderBottom: 1px solid rgba(0,0,0"],
+body.dark [style*="borderTop: 1px solid rgba(0,0,0"] {
+  border-color: rgba(255,255,255,0.05) !important;
+}
+
 /* Dashed borders */
-body.dark [style*="dashed rgba(0,0,0"] {
-  border-color: rgba(255,255,255,0.12) !important;
+body.dark [style*="dashed rgba(0,0,0"],
+body.dark [style*="dashed rgba(74,110"] {
+  border-color: rgba(255,255,255,0.10) !important;
 }
-/* Search/button surfaces */
-body.dark [style*="background: rgba(0,0,0,0.05"],
+
+/* Light-mode subtle backgrounds → dark equivalents */
+body.dark [style*="background: rgba(0,0,0,0.03"],
 body.dark [style*="background: rgba(0,0,0,0.04"],
-body.dark [style*="background: rgba(0,0,0,0.06"] {
-  background: rgba(255,255,255,0.06) !important;
+body.dark [style*="background: rgba(0,0,0,0.05"],
+body.dark [style*="background: rgba(0,0,0,0.06"],
+body.dark [style*="background: rgba(0,0,0,0.07"],
+body.dark [style*="background: rgba(0,0,0,0.12"] {
+  background: rgba(255,255,255,0.05) !important;
+}
+
+/* Urgency/tag color backgrounds (appended hex like #e94f4f18) */
+body.dark [style*="background: #e94f4f"],
+body.dark [style*="background: #f5a623"] {
+  opacity: 0.85;
+}
+
+/* Premium purple backgrounds */
+body.dark [style*="background: rgba(124,58,237"] {
+  background: rgba(176,136,240,0.12) !important;
+}
+body.dark [style*="border: 1px solid rgba(124,58,237"] {
+  border-color: rgba(176,136,240,0.20) !important;
+}
+body.dark [style*="color: #7c3aed"] {
+  color: #b088f0 !important;
+}
+
+/* Trial banner */
+body.dark [style*="background: rgba(229,77,77,0.08"] {
+  background: rgba(240,96,96,0.12) !important;
+}
+
+/* AI thinking dots */
+body.dark .ai-thinking span {
+  background: var(--text-muted);
+}
+
+/* AI cursor */
+body.dark .ai-cursor::after {
+  color: #6b8aff;
 }
 
 /* ── AI streaming animations ─────────────────────────────────────────────── */
