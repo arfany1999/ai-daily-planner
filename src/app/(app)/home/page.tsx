@@ -97,6 +97,53 @@ function parseTags(name: string): { cleanName: string; tags: string[] } {
 }
 
 const TAG_COLORS = ['#4a6ef5', '#e94f4f', '#27c77a', '#f5a623', '#a855f7', '#0d9b8a'];
+
+const GCAL_COLORS: Record<string, string> = {
+  '1':'#7986CB','2':'#33B679','3':'#8E24AA','4':'#E67C73',
+  '5':'#F6BF26','6':'#F4511E','7':'#039BE5','8':'#757575',
+  '9':'#3F51B5','10':'#0B8043','11':'#D50000',
+};
+
+function calToBlock(ev: CalEvent): TimelineBlock & { _fromCal?: boolean } {
+  const fmtHM = (iso: string) => {
+    if (!iso.includes('T')) return '00:00';
+    const d = new Date(iso);
+    return d.toLocaleTimeString('en-AU', { timeZone: 'Australia/Melbourne', hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+  const t = ev.title.toLowerCase();
+  const urgency = t.includes('gym') || t.includes('workout') ? 'gym'
+    : t.includes('work') && !t.includes('homework') ? 'work'
+    : t.includes('lecture') || t.includes('tut') || t.includes('class') || t.includes('lab') || t.includes('practical') ? 'class'
+    : t.includes('lunch') || t.includes('dinner') || t.includes('breakfast') || t.includes('meal') ? 'break'
+    : 'class';
+  return {
+    id: `gcal-${ev.id}`,
+    start_time: ev.allDay ? '00:00' : fmtHM(ev.start),
+    end_time: ev.allDay ? '23:59' : fmtHM(ev.end),
+    task_name: ev.title,
+    description: '',
+    urgency,
+    domain: 'calendar',
+    _fromCal: true,
+  };
+}
+
+/** Merge calendar events into the AI timeline, avoiding duplicates */
+function mergeTimeline(aiBlocks: TimelineBlock[], calEvents: CalEvent[]): TimelineBlock[] {
+  const merged = [...aiBlocks];
+  for (const ev of calEvents) {
+    // Skip if AI plan already has a similar item at the same time
+    const calBlock = calToBlock(ev);
+    const isDuplicate = aiBlocks.some(b => {
+      const sameTime = b.start_time === calBlock.start_time;
+      const similarName = b.task_name.toLowerCase().includes(ev.title.toLowerCase().slice(0, 10))
+        || ev.title.toLowerCase().includes(b.task_name.toLowerCase().slice(0, 10));
+      return sameTime && similarName;
+    });
+    if (!isDuplicate) merged.push(calBlock);
+  }
+  return merged.sort((a, b) => a.start_time.localeCompare(b.start_time));
+}
 function tagColor(tag: string): string {
   let h = 0;
   for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) & 0xffffffff;
@@ -258,6 +305,11 @@ export default function HomePage() {
   const greeting = melbHour < 12 ? 'Good morning' : melbHour < 17 ? 'Good afternoon' : 'Good evening';
   const melbTime = new Date().toLocaleString('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
 
+  // Merge calendar events into AI timeline for unified view
+  const mergedBlocks = todayPlan?.timeline
+    ? mergeTimeline(todayPlan.timeline, calEvents)
+    : [];
+
   // ── Live card stats ────────────────────────────────────────────────────────
   const cardStats: Record<string, string | null> = {};
 
@@ -273,7 +325,7 @@ export default function HomePage() {
 
   // tomorrow: pending tasks from today's plan
   if (todayPlan) {
-    const allT = todayPlan.timeline?.filter(isTask) ?? [];
+    const allT = mergedBlocks.filter(isTask);
     const pending = allT.filter(t => !doneToday.has(t.id)).length;
     const done = doneToday.size;
     if (allT.length > 0) {
@@ -357,8 +409,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Live Google Calendar mirror */}
-      {calEvents.length > 0 && (
+      {/* Calendar-only view when no AI plan exists yet */}
+      {!todayPlan && calEvents.length > 0 && (
         <div style={{
           marginBottom: 20,
           background: 'rgba(255,255,255,0.58)',
@@ -383,49 +435,17 @@ export default function HomePage() {
             <span style={{ marginLeft: 'auto', fontSize: 9, color: T.textMuted, fontWeight: 500 }}>Live · {calEvents.length} event{calEvents.length !== 1 ? 's' : ''}</span>
           </div>
           {calEvents.map(ev => {
-            const GCAL_COLORS: Record<string, string> = {
-              '1':'#7986CB','2':'#33B679','3':'#8E24AA','4':'#E67C73',
-              '5':'#F6BF26','6':'#F4511E','7':'#039BE5','8':'#757575',
-              '9':'#3F51B5','10':'#0B8043','11':'#D50000',
-            };
             const t = ev.title.toLowerCase();
-            const color = ev.color && GCAL_COLORS[ev.color]
-              ? GCAL_COLORS[ev.color]
-              : t.includes('work') ? '#0d9b8a'
-              : t.includes('gym') || t.includes('workout') ? '#27c77a'
-              : t.includes('lecture') || t.includes('tut') || t.includes('class') || t.includes('lab') ? '#4a6ef5'
-              : t.includes('lunch') || t.includes('dinner') || t.includes('meal') ? '#f5a623'
-              : '#4a6ef5';
-
-            const fmtTime = (iso: string) => {
-              if (!iso.includes('T')) return 'All day';
-              const d = new Date(iso);
-              return d.toLocaleTimeString('en-AU', { timeZone: 'Australia/Melbourne', hour: 'numeric', minute: '2-digit', hour12: true });
-            };
+            const color = t.includes('work') ? '#0d9b8a' : t.includes('gym') ? '#27c77a' : '#4a6ef5';
+            const fmtTime = (iso: string) => { if (!iso.includes('T')) return 'All day'; return new Date(iso).toLocaleTimeString('en-AU', { timeZone: 'Australia/Melbourne', hour: 'numeric', minute: '2-digit', hour12: true }); };
             const now = new Date();
-            const evStart = new Date(ev.start);
-            const evEnd = new Date(ev.end);
-            const isNow = !ev.allDay && evStart <= now && evEnd > now;
-            const isPast = !ev.allDay && evEnd < now;
-
+            const isNow = !ev.allDay && new Date(ev.start) <= now && new Date(ev.end) > now;
+            const isPast = !ev.allDay && new Date(ev.end) < now;
             return (
-              <div key={ev.id} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '9px 16px',
-                borderBottom: '1px solid rgba(0,0,0,0.03)',
-                background: isNow ? `${color}08` : 'transparent',
-                opacity: isPast ? 0.4 : 1,
-              }}>
+              <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', borderBottom: '1px solid rgba(0,0,0,0.03)', background: isNow ? `${color}08` : 'transparent', opacity: isPast ? 0.4 : 1 }}>
                 <div style={{ width: 3, alignSelf: 'stretch', minHeight: 18, borderRadius: 2, background: color, flexShrink: 0 }} />
-                <div style={{ width: 72, flexShrink: 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: isNow ? color : T.textMuted }}>
-                    {ev.allDay ? 'All day' : fmtTime(ev.start)}
-                  </div>
-                  {!ev.allDay && <div style={{ fontSize: 9, color: T.textMuted }}>{fmtTime(ev.end)}</div>}
-                </div>
-                <div style={{ flex: 1, fontSize: 12, fontWeight: isNow ? 700 : 500, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {isNow && <span style={{ color, marginRight: 5 }}>▶</span>}{ev.title}
-                </div>
+                <div style={{ width: 72, flexShrink: 0 }}><div style={{ fontSize: 10, fontWeight: 600, color: isNow ? color : T.textMuted }}>{ev.allDay ? 'All day' : fmtTime(ev.start)}</div>{!ev.allDay && <div style={{ fontSize: 9, color: T.textMuted }}>{fmtTime(ev.end)}</div>}</div>
+                <div style={{ flex: 1, fontSize: 12, fontWeight: isNow ? 700 : 500, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isNow && <span style={{ color, marginRight: 5 }}>▶</span>}{ev.title}</div>
               </div>
             );
           })}
@@ -565,7 +585,7 @@ export default function HomePage() {
                 </svg>
               </div>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: T.text, letterSpacing: '-0.2px' }}>Today&apos;s Command</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: T.text, letterSpacing: '-0.2px' }}>Today&apos;s Plan</div>
                 {todayPlan.summary && (
                   <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>{todayPlan.summary}</div>
                 )}
@@ -617,7 +637,7 @@ export default function HomePage() {
 
           {/* Filter tabs + View toggle */}
           {(() => {
-            const allTasks = todayPlan.timeline?.filter(b => isTask(b)) || [];
+            const allTasks = mergedBlocks.filter(b => isTask(b));
             const doneCnt = allTasks.filter(b => doneToday.has(b.id)).length;
             return (
               <div style={{ padding: '8px 16px 6px', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
@@ -642,7 +662,7 @@ export default function HomePage() {
 
           {/* Eisenhower Matrix View */}
           {viewMode === 'matrix' && (() => {
-            const tasks = todayPlan.timeline?.filter(b => isTask(b)) || [];
+            const tasks = mergedBlocks.filter(b => isTask(b));
             const quadrants = [
               { label: 'Do First', sublabel: 'Urgent + Important', urgencies: ['red'], color: '#e54d4d' },
               { label: 'Schedule', sublabel: 'Not Urgent + Important', urgencies: ['amber', 'green'], color: T.teal },
@@ -668,7 +688,7 @@ export default function HomePage() {
           })()}
 
           {/* Timeline — all blocks, past ones dimmed */}
-          {viewMode === 'list' && todayPlan.timeline?.slice(0, 20).filter(block => {
+          {viewMode === 'list' && mergedBlocks.slice(0, 25).filter(block => {
             if (!isTask(block)) return true; // always show fixed events
             if (taskFilter === 'pending') return !doneToday.has(block.id);
             if (taskFilter === 'done') return doneToday.has(block.id);
@@ -712,6 +732,7 @@ export default function HomePage() {
                   <div style={{ fontSize: isBreak ? 10 : 11, fontWeight: isNow ? 700 : 500, color: isBreak ? T.textMuted : T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: isDone ? 'line-through' : 'none' }}>
                     {isNow && <span style={{ color, marginRight: 5 }}>▶</span>}
                     {cleanName}
+                    {(block as TimelineBlock & { _fromCal?: boolean })._fromCal && <span title="From Google Calendar" style={{ marginLeft: 5, fontSize: 9, color: T.textMuted, opacity: 0.6 }}>📅</span>}
                     {block.recurring && <span title="Recurring" style={{ marginLeft: 5, fontSize: 10, color: T.textMuted, opacity: 0.7 }}>↻</span>}
                   </div>
                   {tags.length > 0 && (
