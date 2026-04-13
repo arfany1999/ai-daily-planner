@@ -28,13 +28,12 @@ const items = [
     ),
   },
   {
-    id: '/materials', label: 'Study',
+    id: '/focus', label: 'Focus',
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path d="M4 4h11a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"
-          stroke={active ? T.teal : T.textMuted} strokeWidth="1.8" fill={active ? T.tealGlow : 'none'} />
-        <path d="M17 8h3l-3 4 3 4h-3" stroke={active ? T.teal : T.textMuted} strokeWidth="1.8" strokeLinejoin="round" />
-        <path d="M6 9h7M6 13h5" stroke={active ? T.teal : T.textMuted} strokeWidth="1.7" strokeLinecap="round" />
+        <circle cx="12" cy="12" r="9" stroke={active ? T.teal : T.textMuted} strokeWidth="1.8" fill={active ? T.tealGlow : 'none'} />
+        <circle cx="12" cy="12" r="4" stroke={active ? T.teal : T.textMuted} strokeWidth="1.8" fill={active ? T.teal : 'none'} />
+        <circle cx="12" cy="12" r="1" fill={active ? '#fff' : T.textMuted} />
       </svg>
     ),
   },

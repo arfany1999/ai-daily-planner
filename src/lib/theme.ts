@@ -54,7 +54,7 @@ export const DEFAULT_PROMPTS: Record<string, string> = {
 export const BUILTIN_CARDS = [
   { id: 'weekly', label: 'Planner', title: 'Weekly Plan', desc: 'Rolling 7-day plan', bullets: ['Day-by-day', 'Deadlines', 'Email highlights'], color: T.teal, requires: ['google', 'gmail'], promptKey: 'weekly' },
   { id: 'tomorrow', label: 'To-Do', title: 'Tomorrow', desc: 'Hour-by-hour with buffers', bullets: ['Time-blocked', '30 min buffers', 'Tap to complete'], color: T.orange, requires: ['google'], promptKey: 'tomorrow' },
-  { id: 'materials', label: 'AI-Generated', title: 'Study Materials', desc: 'Notes from lectures', bullets: ['From Canvas', 'MCQs', 'Flashcards'], color: T.green, requires: ['canvas'], promptKey: 'materials' },
+  { id: 'focus', label: 'Deep Work', title: 'Focus', desc: 'Pomodoro + ambient sounds', bullets: ['Task linking', 'Session history', 'Focus streak'], color: T.purple, requires: [], promptKey: '' },
   { id: 'canvas', label: 'University', title: 'Canvas Feed', desc: 'Announcements & updates', bullets: ['New uploads', 'Interpreter', 'Deadlines'], color: T.blue, requires: ['canvas'], promptKey: 'canvas' },
   { id: 'calendar', label: 'Schedule', title: 'Calendar', desc: 'Week + AI study blocks', bullets: ['Calendar sync', '[AI] events', 'Work/gym blocked'], color: T.yellow, requires: ['google'], promptKey: 'calendar' },
 ];

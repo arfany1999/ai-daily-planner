@@ -794,11 +794,18 @@ export default function HomePage() {
                   }}>{expandedTasks.has(block.id) ? '▾' : '▸'} {block.subtasks.length}</button>
                 )}
                 {isTask(block) && !isBreak && (
-                  <button onClick={() => (window as any).__startPomodoro?.(block.task_name)} title="Start Pomodoro" style={{
-                    width: 22, height: 22, borderRadius: 6, border: 'none', background: 'rgba(0,0,0,0.06)',
-                    cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11,
-                  }}>🍅</button>
+                  <>
+                    <button onClick={() => (window as any).__startPomodoro?.(block.task_name, 25, block.id)} title="Start Pomodoro" style={{
+                      width: 22, height: 22, borderRadius: 6, border: 'none', background: 'rgba(0,0,0,0.06)',
+                      cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11,
+                    }}>🍅</button>
+                    <Link href={`/focus?task=${block.id}&name=${encodeURIComponent(block.task_name)}`} title="Open Focus" style={{
+                      width: 22, height: 22, borderRadius: 6, border: 'none', background: 'rgba(0,0,0,0.06)',
+                      cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 10, textDecoration: 'none', color: T.textMuted,
+                    }}>🎯</Link>
+                  </>
                 )}
               </div>
             );

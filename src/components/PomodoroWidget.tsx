@@ -1,24 +1,36 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { T } from '@/lib/theme';
 
 export default function PomodoroWidget() {
+  const router = useRouter();
   const [visible, setVisible] = useState(false);
   const [taskName, setTaskName] = useState('Focus');
-  const [duration, setDuration] = useState(25 * 60); // seconds
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [duration, setDuration] = useState(25 * 60);
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [running, setRunning] = useState(false);
   const [sessions, setSessions] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const sessionDbId = useRef<string | null>(null);
 
-  // Expose start method globally
+  // Expose start method globally — now accepts taskId
   useEffect(() => {
-    (window as any).__startPomodoro = (name: string, mins = 25) => {
+    (window as any).__startPomodoro = (name: string, mins = 25, id?: string) => {
       setTaskName(name);
+      setTaskId(id || null);
       setDuration(mins * 60);
       setTimeLeft(mins * 60);
       setRunning(true);
       setVisible(true);
+
+      // Persist session
+      fetch('/api/focus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_name: name, task_id: id || null, duration_minutes: mins, interval_preset: `${mins}/5` }),
+      }).then(r => r.json()).then(d => { if (d.session?.id) sessionDbId.current = d.session.id; }).catch(() => {});
     };
     return () => { delete (window as any).__startPomodoro; };
   }, []);
@@ -26,16 +38,39 @@ export default function PomodoroWidget() {
   useEffect(() => {
     if (running && timeLeft > 0) {
       intervalRef.current = setInterval(() => setTimeLeft(t => t - 1), 1000);
-    } else if (timeLeft === 0) {
+    } else if (timeLeft === 0 && running) {
       setRunning(false);
       setSessions(s => s + 1);
-      // Play a soft beep (system sound not possible, use notification if permitted)
-      try { new Notification('Pomodoro done! 🍅', { body: taskName }); } catch {}
+      try { new Notification('Pomodoro done!', { body: taskName }); } catch {}
+
+      // Mark complete in DB
+      if (sessionDbId.current) {
+        fetch(`/api/focus/${sessionDbId.current}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed: true, actual_minutes: Math.round(duration / 60) }),
+        }).catch(() => {});
+        sessionDbId.current = null;
+      }
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [running, timeLeft, taskName]);
+  }, [running, timeLeft, taskName, duration]);
 
-  const reset = () => { setRunning(false); setTimeLeft(duration); };
+  const reset = () => {
+    setRunning(false);
+    setTimeLeft(duration);
+    // Mark incomplete if session was active
+    if (sessionDbId.current) {
+      const elapsed = Math.round((duration - timeLeft) / 60);
+      fetch(`/api/focus/${sessionDbId.current}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: false, actual_minutes: elapsed }),
+      }).catch(() => {});
+      sessionDbId.current = null;
+    }
+  };
+
   const mins = String(Math.floor(timeLeft / 60)).padStart(2, '0');
   const secs = String(timeLeft % 60).padStart(2, '0');
   const pct = ((duration - timeLeft) / duration) * 100;
@@ -51,13 +86,11 @@ export default function PomodoroWidget() {
       boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
       animation: 'springIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both',
     }}>
-      {/* Close */}
       <button onClick={() => { setVisible(false); reset(); }} style={{
         position: 'absolute', top: 8, right: 10, background: 'none', border: 'none',
         color: 'rgba(255,255,255,0.4)', fontSize: 16, cursor: 'pointer', lineHeight: 1,
       }}>×</button>
 
-      {/* Task name */}
       <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
         🍅 Pomodoro
       </div>
@@ -65,7 +98,6 @@ export default function PomodoroWidget() {
         {taskName}
       </div>
 
-      {/* Timer circle + progress arc */}
       <div style={{ position: 'relative', width: 80, height: 80, margin: '0 auto 10px' }}>
         <svg width="80" height="80" style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)' }}>
           <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
@@ -80,7 +112,6 @@ export default function PomodoroWidget() {
         </div>
       </div>
 
-      {/* Controls */}
       <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 8 }}>
         <button onClick={() => setRunning(r => !r)} style={{
           flex: 1, padding: '6px 0', borderRadius: 8, border: 'none',
@@ -93,8 +124,15 @@ export default function PomodoroWidget() {
         }}>Reset</button>
       </div>
 
+      {/* Open Focus page link */}
+      <button onClick={() => router.push(taskId ? `/focus?task=${taskId}&name=${encodeURIComponent(taskName)}` : '/focus')} style={{
+        width: '100%', padding: '5px 0', borderRadius: 6, border: 'none',
+        background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)',
+        fontSize: 10, cursor: 'pointer', fontWeight: 600,
+      }}>Open Focus →</button>
+
       {sessions > 0 && (
-        <div style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>
+        <div style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 6 }}>
           {'🍅'.repeat(Math.min(sessions, 8))} {sessions} session{sessions !== 1 ? 's' : ''}
         </div>
       )}
