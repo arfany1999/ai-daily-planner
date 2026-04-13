@@ -12,7 +12,7 @@
 /* ── Dispatch Design System ── */
 :root {
   /* Surfaces — warm dark, layered depth */
-  --bg: #0C0B09;
+  --bg: transparent;
   --bg2: #151310;
   --bg3: #1E1A15;
   --card: rgba(255,255,255,0.07);
@@ -59,47 +59,22 @@
   color-scheme: dark;
 }
 
-/* ── Body ── */
+/* ── Body — grid + glow baked into background ── */
 body {
-  background: var(--bg);
   color: var(--text);
   font-family: 'Inter', -apple-system, 'Helvetica Neue', Arial, sans-serif;
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
-  position: relative;
-}
-
-/* ── Grid background pattern (fixed, full viewport) ── */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
+  background-color: #0C0B09;
+  background-image:
+    radial-gradient(ellipse at 50% 30%, rgba(180,100,50,0.09) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.5) 100%),
     linear-gradient(to right, rgba(180,100,50,0.07) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(180,100,50,0.07) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-
-/* ── Warm ambient glow + vignette ── */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse at 50% 30%, rgba(180,100,50,0.09) 0%, transparent 55%),
-    radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.5) 100%);
-}
-
-/* Ensure all content sits above the background layers */
-body > * {
-  position: relative;
-  z-index: 1;
+  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+  background-attachment: fixed;
 }
 
 input, textarea, button {
