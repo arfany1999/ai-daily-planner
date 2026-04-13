@@ -15,13 +15,13 @@
   --bg: #0C0B09;
   --bg2: #151310;
   --bg3: #1E1A15;
-  --card: rgba(255,255,255,0.04);
-  --border: rgba(255,255,255,0.06);
+  --card: rgba(255,255,255,0.07);
+  --border: rgba(255,255,255,0.09);
 
-  /* Text — warm off-whites, clear hierarchy */
-  --text: #E8E0D8;
-  --text-soft: #D4CBC0;
-  --text-muted: #8A7D70;
+  /* Text — bright warm whites, clear hierarchy */
+  --text: #F0EBE4;
+  --text-soft: #D8D0C5;
+  --text-muted: #9E9285;
 
   /* Accent — terracotta primary */
   --teal: #C4764A;
@@ -38,18 +38,18 @@
   --yellow: #D4A040;
 
   /* Glass / surfaces */
-  --glass: rgba(10,10,8,0.8);
-  --glass-brd: rgba(255,255,255,0.06);
-  --surface: rgba(255,255,255,0.04);
-  --surface-hover: rgba(255,255,255,0.04);
-  --surface-input: rgba(255,255,255,0.06);
+  --glass: rgba(18,16,13,0.85);
+  --glass-brd: rgba(255,255,255,0.08);
+  --surface: rgba(255,255,255,0.06);
+  --surface-hover: rgba(255,255,255,0.06);
+  --surface-input: rgba(255,255,255,0.08);
 
   /* Shell — frosted dark */
-  --nav-bg: rgba(10,10,8,0.8);
-  --nav-bg-solid: rgba(10,10,8,0.95);
-  --bottom-nav-bg: rgba(10,10,8,0.88);
-  --ai-bar-bg: rgba(10,10,8,0.92);
-  --subtle-border: rgba(255,255,255,0.06);
+  --nav-bg: rgba(14,13,10,0.85);
+  --nav-bg-solid: rgba(14,13,10,0.96);
+  --bottom-nav-bg: rgba(14,13,10,0.9);
+  --ai-bar-bg: rgba(14,13,10,0.94);
+  --subtle-border: rgba(255,255,255,0.08);
 
   /* Shadows */
   --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
@@ -113,10 +113,10 @@ input, textarea {
 
 /* ── Glass morphism ── */
 .glass {
-  background: rgba(10,10,8,0.8);
+  background: rgba(18,16,13,0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
 /* ── Scrollbar — warm dark ── */
@@ -358,7 +358,7 @@ input, textarea {
 [style*="background: rgba(0,0,0,0.06"],
 [style*="background: rgba(0,0,0,0.07"],
 [style*="background: rgba(0,0,0,0.12"] {
-  background: rgba(255,255,255,0.04) !important;
+  background: rgba(255,255,255,0.06) !important;
 }
 
 /* Premium purple */
