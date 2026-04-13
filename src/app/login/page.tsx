@@ -57,7 +57,7 @@ function LoginContent() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '13px 14px', boxSizing: 'border-box',
-    background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.1)',
+    background: 'rgba(255,255,255,0.06)', border: `1px solid ${T.border}`,
     borderRadius: 12, fontSize: 14, color: T.text, outline: 'none',
     fontFamily: 'inherit',
   };
@@ -67,15 +67,10 @@ function LoginContent() {
       minHeight: '100vh', background: T.bg,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>
-      {/* Background blobs */}
-      <div style={{ position: 'fixed', top: -80, right: -80, width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(74,110,245,0.06), transparent 70%)', pointerEvents: 'none' }} />
-      <div style={{ position: 'fixed', bottom: -60, left: -60, width: 250, height: 250, borderRadius: '50%', background: 'radial-gradient(circle, rgba(232,123,53,0.06), transparent 70%)', pointerEvents: 'none' }} />
-
       <div style={{
         width: '100%', maxWidth: 380, padding: '44px 36px',
-        background: 'rgba(255,255,255,0.58)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: 24, border: '1px solid rgba(255,255,255,0.85)', textAlign: 'center',
-        boxShadow: '0 16px 48px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9)',
+        background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderRadius: 24, border: `1px solid ${T.border}`, textAlign: 'center',
       }}>
         {/* Logo */}
         <div style={{ position: 'relative', width: 64, height: 64, margin: '0 auto 16px' }}>
@@ -227,7 +222,7 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: '100vh', background: '#f3ede1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a09880', fontSize: 14 }}>
+      <div style={{ minHeight: '100vh', background: '#0A0A08', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8A7D70', fontSize: 14 }}>
         Loading...
       </div>
     }>

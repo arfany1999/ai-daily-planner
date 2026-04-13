@@ -86,11 +86,7 @@ function SubscriptionGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    try {
-      if (localStorage.getItem('ai-planner-dark') === '1') document.body.classList.add('dark');
-    } catch {}
-  }, []);
+  // App is always dark (Dispatch aesthetic) — no toggle needed
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex' }}>

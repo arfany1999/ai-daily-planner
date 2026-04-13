@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { T } from '@/lib/theme';
 
-const B = ({ children }: { children: React.ReactNode }) => <strong style={{ fontWeight: 600, color: '#1a1510' }}>{children}</strong>;
+const B = ({ children }: { children: React.ReactNode }) => <strong style={{ fontWeight: 600, color: T.text }}>{children}</strong>;
 
 const layers = [
   { icon: '🎓', label: 'Canvas', desc: <>Reads your university portal. <B>Assignments</B>, <B>announcements</B>, <B>deadlines</B>. Pulled and parsed automatically.</> },

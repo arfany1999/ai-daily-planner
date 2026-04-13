@@ -23,8 +23,8 @@ export default function TrialBanner({ daysLeft }: { daysLeft: number }) {
 
   return (
     <div style={{
-      background: urgent ? 'rgba(229,77,77,0.08)' : 'rgba(74,110,245,0.06)',
-      borderBottom: `1px solid ${urgent ? 'rgba(229,77,77,0.15)' : 'rgba(74,110,245,0.12)'}`,
+      background: urgent ? 'rgba(212,96,74,0.1)' : 'rgba(196,118,74,0.08)',
+      borderBottom: `1px solid ${urgent ? 'rgba(212,96,74,0.2)' : 'rgba(196,118,74,0.15)'}`,
       padding: '8px 20px',
       display: 'flex',
       alignItems: 'center',
@@ -32,7 +32,7 @@ export default function TrialBanner({ daysLeft }: { daysLeft: number }) {
       gap: 12,
       fontSize: 12,
     }}>
-      <span style={{ color: urgent ? '#c0392b' : '#4a6ef5', fontWeight: 500 }}>
+      <span style={{ color: urgent ? '#D4604A' : '#C4764A', fontWeight: 500 }}>
         {daysLeft === 1
           ? 'Last day of your free trial.'
           : `${daysLeft} days left in your free trial.`}
@@ -43,8 +43,8 @@ export default function TrialBanner({ daysLeft }: { daysLeft: number }) {
           disabled={loading}
           style={{
             padding: '4px 12px',
-            background: urgent ? '#e54d4d' : '#4a6ef5',
-            color: '#fff',
+            background: urgent ? '#D4604A' : '#C4764A',
+            color: '#F5F0EB',
             border: 'none',
             borderRadius: 8,
             fontSize: 11,
@@ -57,7 +57,7 @@ export default function TrialBanner({ daysLeft }: { daysLeft: number }) {
         </button>
         <button
           onClick={() => setDismissed(true)}
-          style={{ background: 'none', border: 'none', color: '#a09880', fontSize: 14, cursor: 'pointer', padding: 0, lineHeight: 1 }}
+          style={{ background: 'none', border: 'none', color: '#6B6058', fontSize: 14, cursor: 'pointer', padding: 0, lineHeight: 1 }}
         >
           ×
         </button>

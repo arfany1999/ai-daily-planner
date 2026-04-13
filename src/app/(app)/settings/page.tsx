@@ -477,17 +477,10 @@ export default function SettingsPage() {
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Dark Mode</div>
-            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>Switch to dark theme for evening use</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Dispatch Theme</div>
+            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>Warm dark aesthetic with terracotta accents</div>
           </div>
-          <Toggle
-            on={(() => { try { return localStorage.getItem('ai-planner-dark') === '1'; } catch { return false; } })()}
-            onChange={() => {
-              const isDark = document.body.classList.toggle('dark');
-              try { localStorage.setItem('ai-planner-dark', isDark ? '1' : '0'); } catch {}
-            }}
-            color={T.teal}
-          />
+          <span style={{ fontSize: 10, color: T.teal, fontWeight: 600, background: `${T.teal}15`, padding: '3px 10px', borderRadius: 6 }}>Active</span>
         </div>
       </div>
 
