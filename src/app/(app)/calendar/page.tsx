@@ -180,7 +180,7 @@ function WeekStrip({ baseDate, selected, onSelect, eventDates }: {
             flex: '0 0 auto', minWidth: 42,
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
             padding: '6px 4px', borderRadius: 12, border: 'none', cursor: 'pointer',
-            background: isSel ? T.teal : isToday ? T.teal + '18' : 'rgba(255,255,255,0.4)',
+            background: isSel ? T.teal : isToday ? T.teal + '18' : 'rgba(255,255,255,0.06)',
             transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
             transform: isSel ? 'scale(1.06)' : 'scale(1)',
           }}>
@@ -190,7 +190,7 @@ function WeekStrip({ baseDate, selected, onSelect, eventDates }: {
             <span style={{ fontSize: 16, fontWeight: 700, color: isSel ? '#fff' : isToday ? T.teal : T.text }}>
               {d.getDate()}
             </span>
-            <div style={{ width: 4, height: 4, borderRadius: '50%', background: hasEvents ? (isSel ? 'rgba(255,255,255,0.7)' : T.teal) : 'transparent' }} />
+            <div style={{ width: 4, height: 4, borderRadius: '50%', background: hasEvents ? (isSel ? 'rgba(255,255,255,0.08)' : T.teal) : 'transparent' }} />
           </button>
         );
       })}
@@ -686,11 +686,11 @@ function AgendaView({ events, fromDate, onSelectDay }: {
             }}>
               <div style={{
                 width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
-                background: isToday ? T.teal : 'rgba(255,255,255,0.7)',
+                background: isToday ? T.teal : 'rgba(255,255,255,0.08)',
                 border: isToday ? 'none' : '1px solid rgba(0,0,0,0.08)',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               }}>
-                <div style={{ fontSize: 8, fontWeight: 700, textTransform: 'uppercase', color: isToday ? 'rgba(255,255,255,0.8)' : T.textMuted, lineHeight: 1 }}>
+                <div style={{ fontSize: 8, fontWeight: 700, textTransform: 'uppercase', color: isToday ? 'rgba(255,255,255,0.5)' : T.textMuted, lineHeight: 1 }}>
                   {d.toLocaleDateString('en-AU', { weekday: 'short' }).toUpperCase()}
                 </div>
                 <div style={{ fontSize: 15, fontWeight: 800, color: isToday ? '#fff' : T.text, lineHeight: 1.1 }}>

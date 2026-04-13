@@ -381,7 +381,7 @@ export default function AiBar() {
                             onClick={() => setChat(c => [...c, { role: 'assistant', content: 'Dismissed.' }])}
                             style={{
                               padding: '7px 12px',
-                              background: 'rgba(255,255,255,0.5)',
+                              background: 'rgba(255,255,255,0.06)',
                               border: '1px solid rgba(0,0,0,0.08)',
                               borderRadius: 10, color: T.textMuted, fontSize: 11, cursor: 'pointer',
                             }}

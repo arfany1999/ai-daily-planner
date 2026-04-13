@@ -385,7 +385,7 @@ export default function HomePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               <button onClick={() => setSearchOpen(true)} style={{
                 width: 34, height: 34, borderRadius: 10, border: `1px solid ${T.border}`,
-                background: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer',
               }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -588,7 +588,7 @@ export default function HomePage() {
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button onClick={refreshPlan} disabled={refreshingPlan} title="Regenerate plan with latest data" style={{
                 width: 26, height: 26, borderRadius: 8, border: '1px solid rgba(0,0,0,0.08)',
-                background: 'rgba(255,255,255,0.6)', color: T.textMuted,
+                background: 'rgba(255,255,255,0.06)', color: T.textMuted,
                 cursor: refreshingPlan ? 'wait' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 opacity: refreshingPlan ? 0.5 : 1,
@@ -978,7 +978,7 @@ export default function HomePage() {
         {/* Inactive cards */}
         {inactive.map((c) => (
           <div key={c.id} style={{
-            background: 'rgba(255,255,255,0.28)',
+            background: 'rgba(255,255,255,0.06)',
             border: `1px dashed rgba(0,0,0,0.1)`,
             borderRadius: 18, padding: '20px 20px 16px', opacity: 0.55,
           }}>

@@ -275,7 +275,7 @@ export default function CanvasPage() {
             <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
               flexShrink: 0,
               padding: '7px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: isActive ? color : 'rgba(255,255,255,0.6)',
+              background: isActive ? color : 'rgba(255,255,255,0.06)',
               color: isActive ? '#fff' : T.textMuted,
               fontSize: 11, fontWeight: 700,
               boxShadow: isActive ? `0 3px 12px ${color}30` : '0 1px 4px rgba(0,0,0,0.06)',
@@ -429,7 +429,7 @@ function AssignmentCard({ a, courseColor, showCourse }: { a: Assignment; courseC
 
   return (
     <div style={{
-      background: urg ? urg.bg : 'rgba(255,255,255,0.62)',
+      background: urg ? urg.bg : 'rgba(255,255,255,0.06)',
       backdropFilter: 'blur(14px)',
       border: `1px solid rgba(255,255,255,0.85)`,
       borderLeft: `3px solid ${urg ? urg.color : courseColor}`,
