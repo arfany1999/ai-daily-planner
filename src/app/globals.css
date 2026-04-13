@@ -12,8 +12,8 @@
 /* ── Dispatch Design System ── */
 :root {
   /* Surfaces — warm dark, layered depth */
-  --bg: #0A0A08;
-  --bg2: #141210;
+  --bg: #0C0B09;
+  --bg2: #151310;
   --bg3: #1E1A15;
   --card: rgba(255,255,255,0.04);
   --border: rgba(255,255,255,0.06);
@@ -79,8 +79,8 @@ body::before {
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(to right, rgba(180,100,50,0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(180,100,50,0.05) 1px, transparent 1px);
+    linear-gradient(to right, rgba(180,100,50,0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(180,100,50,0.07) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
@@ -92,8 +92,8 @@ body::after {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 35%, rgba(180,100,50,0.07) 0%, transparent 65%),
-    radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.4) 100%);
+    radial-gradient(ellipse at 50% 30%, rgba(180,100,50,0.09) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.5) 100%);
 }
 
 /* Ensure all content sits above the background layers */
