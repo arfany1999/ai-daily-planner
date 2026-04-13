@@ -344,7 +344,9 @@ export default function AiBar() {
                   }}>
                     {m.content === '' && isLastStreaming ? (
                       <span className="ai-thinking">
-                        <span /><span /><span />
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="ai-spark">
+                          <path d="M12 3C12 3 14 8 16 10C18 12 21 12 21 12C21 12 18 12 16 14C14 16 12 21 12 21C12 21 10 16 8 14C6 12 3 12 3 12C3 12 6 12 8 10C10 8 12 3 12 3Z" fill="#C4764A" />
+                        </svg>
                       </span>
                     ) : (
                       <span>
