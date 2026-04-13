@@ -83,7 +83,7 @@ export default function PushToggle() {
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '14px 16px', borderRadius: 14,
-        background: 'rgba(255,255,255,0.52)', border: '1px solid rgba(255,255,255,0.82)',
+        background: 'transparent', border: '1px solid rgba(255,255,255,0.06)',
         cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.6 : 1,
         transition: 'opacity 0.2s',
       }}

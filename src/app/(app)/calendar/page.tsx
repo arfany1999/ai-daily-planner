@@ -229,7 +229,7 @@ function DayTimeline({ events, selectedDate }: { events: CalEvent[]; selectedDat
       {allDayEvents.length > 0 && (
         <div style={{
           padding: '8px 16px', flexShrink: 0,
-          background: 'rgba(255,255,255,0.5)',
+          background: 'transparent',
           borderBottom: '1px solid rgba(0,0,0,0.07)',
           display: 'flex', flexWrap: 'wrap', gap: 5,
         }}>
@@ -371,7 +371,7 @@ function WeekView({ events, weekStart, onSelectDay }: { events: CalEvent[]; week
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       <div style={{
         display: 'flex', borderBottom: '1px solid rgba(0,0,0,0.08)',
-        background: 'rgba(255,255,255,0.4)', flexShrink: 0,
+        background: 'transparent', flexShrink: 0,
       }}>
         <div style={{ width: GUTTER, flexShrink: 0 }} />
         {days.map(d => {
@@ -588,7 +588,7 @@ function MiniMonth({ year, month, eventDates, onSelectMonth }: {
 
   return (
     <div onClick={() => onSelectMonth(year, month)} style={{
-      background: 'rgba(255,255,255,0.55)', borderRadius: 12, padding: '8px 6px', cursor: 'pointer',
+      background: 'transparent', borderRadius: 12, padding: '8px 6px', cursor: 'pointer',
       border: isCurrentMonth ? `1.5px solid ${T.teal}50` : '1px solid rgba(0,0,0,0.06)',
     }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: isCurrentMonth ? T.teal : T.text, marginBottom: 4, textAlign: 'center' }}>
@@ -881,8 +881,8 @@ function ConnectPrompt() {
     <div style={{ padding: '40px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 16 }}>
       <div style={{
         width: 64, height: 64, borderRadius: 20,
-        background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.9)',
+        background: 'transparent', backdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255,255,255,0.06)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
       }}>
@@ -1105,7 +1105,7 @@ export default function CalendarPage() {
       <div style={{
         padding: '8px 14px 0',
         background: 'rgba(243,237,225,0.95)',
-        backdropFilter: 'blur(16px)',
+        
         WebkitBackdropFilter: 'blur(16px)',
         flexShrink: 0,
         borderBottom: '1px solid rgba(0,0,0,0.07)',
@@ -1114,7 +1114,7 @@ export default function CalendarPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
           <button onClick={() => shiftPeriod(-1)} style={{
             width: 28, height: 28, borderRadius: 8, border: 'none',
-            background: 'rgba(255,255,255,0.7)', color: T.textMuted,
+            background: 'transparent', color: T.textMuted,
             fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>‹</button>
@@ -1133,7 +1133,7 @@ export default function CalendarPage() {
 
           <button onClick={() => shiftPeriod(1)} style={{
             width: 28, height: 28, borderRadius: 8, border: 'none',
-            background: 'rgba(255,255,255,0.7)', color: T.textMuted,
+            background: 'transparent', color: T.textMuted,
             fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>›</button>
@@ -1149,7 +1149,7 @@ export default function CalendarPage() {
 
           <button onClick={handleRefresh} disabled={refreshing} style={{
             width: 28, height: 28, borderRadius: 8, border: `1px solid rgba(0,0,0,0.08)`,
-            background: 'rgba(255,255,255,0.7)', color: T.textMuted, flexShrink: 0,
+            background: 'transparent', color: T.textMuted, flexShrink: 0,
             cursor: refreshing ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             opacity: refreshing ? 0.5 : 1,
           }}>

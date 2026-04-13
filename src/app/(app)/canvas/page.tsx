@@ -152,7 +152,7 @@ export default function CanvasPage() {
         <div style={{ fontSize: 22, fontWeight: 700, color: T.text, marginBottom: 4 }}>Canvas</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
           {[1,2,3].map(i => (
-            <div key={i} style={{ height: 80, borderRadius: 14, background: 'rgba(255,255,255,0.4)', animation: 'fadeIn 0.5s ease both' }} />
+            <div key={i} style={{ height: 80, borderRadius: 14, background: 'transparent', animation: 'fadeIn 0.5s ease both' }} />
           ))}
         </div>
       </div>
@@ -165,8 +165,8 @@ export default function CanvasPage() {
       <div style={{ padding: '22px 18px' }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: T.text, marginBottom: 4 }}>Canvas</div>
         <div style={{
-          background: 'rgba(255,255,255,0.58)', backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255,255,255,0.85)', borderRadius: 20,
+          background: 'transparent', 
+          border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20,
           padding: 28, textAlign: 'center',
         }}>
           <div style={{ fontSize: 38, marginBottom: 14 }}>🎓</div>
@@ -177,7 +177,7 @@ export default function CanvasPage() {
           <div style={{ display: 'flex', gap: 8 }}>
             <input value={tokenInput} onChange={e => setTokenInput(e.target.value)}
               type="password" placeholder="Paste Canvas API token..."
-              style={{ flex: 1, padding: '11px 14px', background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 10, color: T.text, fontSize: 12, outline: 'none' }}
+              style={{ flex: 1, padding: '11px 14px', background: 'transparent', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 10, color: T.text, fontSize: 12, outline: 'none' }}
             />
             <button onClick={saveToken} disabled={saving || !tokenInput.trim()} style={{
               padding: '11px 18px', background: tokenInput.trim() ? `linear-gradient(135deg,${T.tealDk},${T.teal})` : 'rgba(0,0,0,0.07)',
@@ -298,8 +298,8 @@ export default function CanvasPage() {
             const courseColor = courseColorMap[a.course_name] || T.teal;
             return (
               <div key={a.id} style={{
-                background: 'rgba(255,255,255,0.58)', backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255,255,255,0.85)', borderRadius: 14, padding: '14px 16px',
+                background: 'transparent', backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '14px 16px',
                 borderLeft: `3px solid ${courseColor}`,
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
@@ -367,7 +367,7 @@ export default function CanvasPage() {
                 const courseColor = courseColorMap[a.course_name] || T.teal;
                 return (
                   <div key={a.id} style={{
-                    background: 'rgba(255,255,255,0.45)', borderRadius: 12, padding: '11px 14px',
+                    background: 'transparent', borderRadius: 12, padding: '11px 14px',
                     borderLeft: `3px solid ${courseColor}`, border: `1px solid rgba(255,255,255,0.8)`,
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -396,7 +396,7 @@ export default function CanvasPage() {
               </button>
               {showCompletedForTab && visibleSubmitted.map(a => (
                 <div key={a.id} style={{
-                  background: 'rgba(255,255,255,0.3)', border: '1px solid rgba(0,0,0,0.05)',
+                  background: 'transparent', border: '1px solid rgba(0,0,0,0.05)',
                   borderRadius: 10, padding: '9px 14px', marginBottom: 5, opacity: 0.6,
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 }}>
@@ -465,7 +465,7 @@ function AssignmentCard({ a, courseColor, showCourse }: { a: Assignment; courseC
       {plan && (days !== null && days <= 7 || expanded) && (
         <div style={{
           marginTop: 10, padding: '8px 11px', borderRadius: 9,
-          background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.9)',
+          background: 'transparent', border: '1px solid rgba(255,255,255,0.06)',
           fontSize: 11, color: T.textSoft, lineHeight: 1.6,
         }}>
           {plan}

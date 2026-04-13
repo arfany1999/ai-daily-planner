@@ -11,9 +11,9 @@ export default function PageHeader({ title, subtitle }: { title: string; subtitl
           cursor: 'pointer', color: T.textMuted, fontSize: 16,
           width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
           borderRadius: 10, textDecoration: 'none',
-          background: 'rgba(255,255,255,0.52)',
+          background: 'transparent',
           backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255,255,255,0.8)',
+          border: '1px solid rgba(255,255,255,0.06)',
           boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
           transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
         }}>{'←'}</Link>

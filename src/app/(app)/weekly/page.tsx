@@ -164,7 +164,7 @@ export default function WeeklyPage() {
 
       {/* Week priorities */}
       <div style={{
-        background: 'rgba(255,255,255,0.52)', backdropFilter: 'blur(14px)',
+        background: 'transparent', backdropFilter: 'blur(14px)',
         border: `1px solid ${T.tealBrd}`, borderRadius: 14, padding: '14px 16px', marginBottom: 12,
         boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
       }}>
@@ -215,7 +215,7 @@ export default function WeeklyPage() {
               placeholder="Add your own priority..."
               style={{
                 flex: 1, padding: '8px 12px', fontSize: 12,
-                background: 'rgba(255,255,255,0.7)',
+                background: 'transparent',
                 border: `1.5px solid ${T.tealBrd}`,
                 borderRadius: 9, color: T.text, outline: 'none',
               }}

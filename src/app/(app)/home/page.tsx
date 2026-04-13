@@ -413,13 +413,11 @@ export default function HomePage() {
       {!todayPlan && calEvents.length > 0 && (
         <div style={{
           marginBottom: 20,
-          background: 'rgba(255,255,255,0.58)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255,255,255,0.85)',
+          background: 'transparent',
+                    border: `1px solid ${T.border}`,
           borderRadius: 20,
           overflow: 'hidden',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9)',
-          animation: 'springIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both',
+                    animation: 'springIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both',
         }}>
           <div style={{
             padding: '12px 16px 10px',
@@ -456,13 +454,11 @@ export default function HomePage() {
       {briefing && (
         <div style={{
           marginBottom: 20,
-          background: 'rgba(255,255,255,0.58)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255,255,255,0.85)',
+          background: 'transparent',
+                    border: `1px solid ${T.border}`,
           borderRadius: 20,
           overflow: 'hidden',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9)',
-          animation: 'springIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both',
+                    animation: 'springIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both',
         }}>
           {/* Header */}
           <div style={{
@@ -532,7 +528,7 @@ export default function HomePage() {
       {!todayPlan && !refreshingPlan && (
         <div style={{
           marginBottom: 20,
-          background: 'rgba(255,255,255,0.45)',
+          background: 'transparent',
           border: '2px dashed rgba(74,110,245,0.2)',
           borderRadius: 20, padding: '22px 20px',
           display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 10,
@@ -550,7 +546,7 @@ export default function HomePage() {
         </div>
       )}
       {!todayPlan && refreshingPlan && (
-        <div style={{ marginBottom: 20, padding: '22px 20px', textAlign: 'center', color: T.textMuted, fontSize: 12, background: 'rgba(255,255,255,0.45)', borderRadius: 20 }}>
+        <div style={{ marginBottom: 20, padding: '22px 20px', textAlign: 'center', color: T.textMuted, fontSize: 12, background: 'transparent', borderRadius: 20 }}>
           Generating your plan… this takes ~15 seconds
         </div>
       )}
@@ -559,13 +555,11 @@ export default function HomePage() {
       {todayPlan && (
         <div style={{
           marginBottom: 20,
-          background: 'rgba(255,255,255,0.58)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255,255,255,0.85)',
+          background: 'transparent',
+                    border: `1px solid ${T.border}`,
           borderRadius: 20,
           overflow: 'hidden',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9)',
-          animation: 'springIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.05s both',
+                    animation: 'springIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.05s both',
         }}>
           {/* Header */}
           <div style={{
@@ -869,7 +863,7 @@ export default function HomePage() {
             <div key={key} style={{
               display: 'flex', alignItems: 'center', gap: 5,
               padding: '5px 11px', borderRadius: 20,
-              background: 'rgba(255,255,255,0.52)',
+              background: 'transparent',
               border: `1px solid rgba(255,255,255,0.8)`,
               backdropFilter: 'blur(8px)',
               boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
@@ -896,7 +890,7 @@ export default function HomePage() {
             <div
               className="card-lift"
               style={{
-                background: 'rgba(255,255,255,0.52)',
+                background: 'transparent',
                 backdropFilter: 'blur(14px)',
                 WebkitBackdropFilter: 'blur(14px)',
                 border: '1px solid rgba(255,255,255,0.82)',
