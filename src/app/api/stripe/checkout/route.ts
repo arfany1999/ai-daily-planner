@@ -32,7 +32,7 @@ export const POST = withAuth(async (_req, userId) => {
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
-    line_items: [{ price: process.env.STRIPE_PRICE_ID!, quantity: 1 }],
+    line_items: [{ price: process.env.STRIPE_PRICE_ID!.trim(), quantity: 1 }],
     success_url: `${base}/home?subscribed=1`,
     cancel_url: `${base}/paywall?cancelled=1`,
     allow_promotion_codes: true,
