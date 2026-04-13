@@ -74,8 +74,8 @@ function LoginContent() {
       }}>
         {/* Logo */}
         <div style={{ position: 'relative', width: 64, height: 64, margin: '0 auto 16px' }}>
-          <img src="/icons/icon-source.jpg" alt="AI Daily" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(255,255,255,0.9)', boxShadow: `0 8px 28px rgba(74,110,245,0.18)` }} />
-          <div style={{ position: 'absolute', bottom: 0, right: 0, width: 20, height: 20, borderRadius: '50%', background: `linear-gradient(135deg,${T.tealDk},${T.teal})`, border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <img src="/icons/icon-source.jpg" alt="AI Daily" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(255,255,255,0.1)', boxShadow: `0 8px 28px rgba(196,118,74,0.18)` }} />
+          <div style={{ position: 'absolute', bottom: 0, right: 0, width: 20, height: 20, borderRadius: '50%', background: T.teal, border: '2px solid #0C0B09', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="9" height="9" viewBox="0 0 24 24" fill="none"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="white"/></svg>
           </div>
         </div>
@@ -84,14 +84,14 @@ function LoginContent() {
         <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 28, lineHeight: 1.6 }}>5 layers of AI that <strong style={{ fontWeight: 600, color: T.text }}>think</strong> about your university data</div>
 
         {/* Tab switcher */}
-        <div style={{ display: 'flex', background: 'rgba(0,0,0,0.05)', borderRadius: 12, padding: 3, marginBottom: 24, gap: 2 }}>
+        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 3, marginBottom: 24, gap: 2 }}>
           {(['google', 'email'] as const).map((t) => (
             <button key={t} onClick={() => { setTab(t); setFormError(''); setFormSuccess(''); }}
               style={{
                 flex: 1, padding: '8px 0', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                background: tab === t ? 'white' : 'transparent',
+                background: tab === t ? 'rgba(255,255,255,0.08)' : 'transparent',
                 color: tab === t ? T.text : T.textMuted,
-                boxShadow: tab === t ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                boxShadow: 'none',
                 transition: 'all 0.18s ease',
               }}>
               {t === 'google' ? '🔵  Google' : '✉️  Email'}
@@ -101,21 +101,21 @@ function LoginContent() {
 
         {/* Error from URL */}
         {error && (
-          <div style={{ padding: '10px 14px', marginBottom: 16, background: 'rgba(229,77,77,0.08)', border: '1px solid rgba(229,77,77,0.2)', borderRadius: 10, fontSize: 12, color: T.red }}>
+          <div style={{ padding: '10px 14px', marginBottom: 16, background: 'rgba(212,96,74,0.1)', border: '1px solid rgba(212,96,74,0.2)', borderRadius: 10, fontSize: 12, color: T.red }}>
             {error === 'OAuthAccountNotLinked' ? 'This email is linked to another sign-in method.' : 'Something went wrong. Please try again.'}
           </div>
         )}
 
         {/* Form error */}
         {formError && (
-          <div style={{ padding: '10px 14px', marginBottom: 16, background: 'rgba(229,77,77,0.08)', border: '1px solid rgba(229,77,77,0.2)', borderRadius: 10, fontSize: 12, color: T.red }}>
+          <div style={{ padding: '10px 14px', marginBottom: 16, background: 'rgba(212,96,74,0.1)', border: '1px solid rgba(212,96,74,0.2)', borderRadius: 10, fontSize: 12, color: T.red }}>
             {formError}
           </div>
         )}
 
         {/* Success */}
         {formSuccess && (
-          <div style={{ padding: '10px 14px', marginBottom: 16, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 10, fontSize: 12, color: '#16a34a' }}>
+          <div style={{ padding: '10px 14px', marginBottom: 16, background: 'rgba(93,184,112,0.1)', border: '1px solid rgba(93,184,112,0.2)', borderRadius: 10, fontSize: 12, color: T.green }}>
             {formSuccess}
           </div>
         )}
@@ -147,7 +147,7 @@ function LoginContent() {
               </svg>
               Sign in with Google
             </button>
-            <div style={{ marginTop: 14, padding: '9px 12px', borderRadius: 10, background: 'rgba(74,110,245,0.06)', border: '1px solid rgba(74,110,245,0.15)', fontSize: 11, color: T.textSoft, lineHeight: 1.6, textAlign: 'left' }}>
+            <div style={{ marginTop: 14, padding: '9px 12px', borderRadius: 10, background: 'rgba(196,118,74,0.08)', border: '1px solid rgba(196,118,74,0.15)', fontSize: 11, color: T.textSoft, lineHeight: 1.6, textAlign: 'left' }}>
               <strong style={{ color: T.teal }}>Next step:</strong> Connect <strong>Calendar</strong>, <strong>Gmail</strong>, and <strong>Canvas</strong> from Settings to activate all 5 layers.
             </div>
           </>
@@ -204,8 +204,8 @@ function LoginContent() {
               </p>
             )}
 
-            <div style={{ padding: '9px 12px', borderRadius: 10, background: 'rgba(232,123,53,0.06)', border: '1px solid rgba(232,123,53,0.15)', fontSize: 11, color: T.textSoft, lineHeight: 1.6 }}>
-              <strong style={{ color: '#e87b35' }}>Next step:</strong> Connect <strong>Calendar</strong>, <strong>Gmail</strong>, and <strong>Canvas</strong> from Settings to activate all 5 layers.
+            <div style={{ padding: '9px 12px', borderRadius: 10, background: 'rgba(196,118,74,0.08)', border: '1px solid rgba(196,118,74,0.15)', fontSize: 11, color: T.textSoft, lineHeight: 1.6 }}>
+              <strong style={{ color: T.teal }}>Next step:</strong> Connect <strong>Calendar</strong>, <strong>Gmail</strong>, and <strong>Canvas</strong> from Settings to activate all 5 layers.
             </div>
           </form>
         )}
@@ -222,7 +222,7 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: '100vh', background: '#0A0A08', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8A7D70', fontSize: 14 }}>
+      <div style={{ minHeight: '100vh', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9E9285', fontSize: 14 }}>
         Loading...
       </div>
     }>
