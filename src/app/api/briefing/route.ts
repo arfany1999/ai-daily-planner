@@ -172,7 +172,7 @@ ${semesterContext ? `SEMESTER CONTEXT (accumulated intelligence):\n${JSON.string
 
 ${connectionResults.length > 0 ? `CUSTOM CONNECTIONS:\n${connectionResults.map((c) => `${c.name}: ${c.result_text}`).join('\n')}` : ''}
 
-Today is ${getTodayDate()}. Generate the briefing starting from TODAY (include today's remaining events).`;
+Today is ${new Date().toLocaleDateString('en-AU', { timeZone: TIMEZONE, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} (${getTodayDate()}). Generate the briefing starting from TODAY (include today's remaining events).`;
 
   const response = await generateWithClaude(systemPrompt, dataMessage, { maxTokens: 4096 });
 

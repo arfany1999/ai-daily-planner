@@ -83,7 +83,8 @@ Return ONLY valid JSON (no markdown):
   "summary": "One-line day overview"
 }`;
 
-    const dataMsg = `Generate the commander schedule for TODAY: ${today}.
+    const dayName = new Date().toLocaleDateString('en-AU', { timeZone: TIMEZONE, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const dataMsg = `Generate the commander schedule for TODAY: ${dayName} (${today}).
 
 CALENDAR (today + upcoming): ${JSON.stringify(todayEvents.slice(0, 30))}
 ${canvas ? `CANVAS DEADLINES: ${JSON.stringify(

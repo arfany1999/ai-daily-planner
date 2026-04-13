@@ -197,7 +197,7 @@ YESTERDAY'S COMPLETION DATA:
 - Completed: ${(yesterdayCompletions || []).length} tasks (IDs: ${[...completedTaskIds].join(', ') || 'none'})
 - Incomplete (carry forward these): ${JSON.stringify(incompleteInfo)}
 
-Generate the to-do for ${tomorrowDate}.`;
+Generate the to-do for ${(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toLocaleDateString('en-AU', { timeZone: TIMEZONE, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); })()} (${tomorrowDate}).`;
 
   const response = await generateWithClaude(systemPrompt, userMsg, { maxTokens: 4096 });
 

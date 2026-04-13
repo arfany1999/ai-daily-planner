@@ -91,7 +91,7 @@ ${canvas ? `CANVAS DATA:\n${JSON.stringify(canvas, null, 2)}` : 'CANVAS: Not con
 
 ${connectionResults.length > 0 ? `CUSTOM CONNECTIONS:\n${connectionResults.map((c) => `${c.name}: ${c.result_text}`).join('\n')}` : ''}
 
-Today is ${today}. Generate the briefing starting from tomorrow.`;
+Today is ${new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} (${today}). Generate the briefing starting from tomorrow.`;
 
     const response = await generateWithClaude(systemPrompt, dataMessage, { maxTokens: 4096 });
 
