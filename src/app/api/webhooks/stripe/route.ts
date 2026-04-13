@@ -4,7 +4,7 @@ import { markUserPremium, renewUserPremium, revokeUserPremium, markPaymentFailed
 
 export const dynamic = 'force-dynamic';
 
-function getStripe() { return new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2026-03-25.dahlia' }); }
+function getStripe() { return new Stripe(process.env.STRIPE_SECRET_KEY!.trim(), { apiVersion: '2026-03-25.dahlia' }); }
 
 export async function POST(req: Request) {
   const stripe = getStripe();
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!.trim());
   } catch {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }

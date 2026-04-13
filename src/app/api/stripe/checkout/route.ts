@@ -4,7 +4,7 @@ import { withAuth } from '@/lib/api-handler';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
-function getStripe() { return new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2026-03-25.dahlia' }); }
+function getStripe() { return new Stripe(process.env.STRIPE_SECRET_KEY!.trim(), { apiVersion: '2026-03-25.dahlia' }); }
 
 export const POST = withAuth(async (_req, userId) => {
   const stripe = getStripe();
