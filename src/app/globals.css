@@ -38,17 +38,17 @@
   --yellow: #D4A040;
 
   /* Glass / surfaces */
-  --glass: rgba(18,16,13,0.85);
+  --glass: rgba(12,11,9,0.75);
   --glass-brd: rgba(255,255,255,0.08);
   --surface: rgba(255,255,255,0.06);
   --surface-hover: rgba(255,255,255,0.06);
   --surface-input: rgba(255,255,255,0.08);
 
-  /* Shell — frosted dark */
-  --nav-bg: rgba(14,13,10,0.85);
-  --nav-bg-solid: rgba(14,13,10,0.96);
-  --bottom-nav-bg: rgba(14,13,10,0.9);
-  --ai-bar-bg: rgba(14,13,10,0.94);
+  /* Shell — frosted dark (semi-transparent so grid shows through) */
+  --nav-bg: rgba(12,11,9,0.75);
+  --nav-bg-solid: rgba(12,11,9,0.88);
+  --bottom-nav-bg: rgba(12,11,9,0.8);
+  --ai-bar-bg: rgba(12,11,9,0.78);
   --subtle-border: rgba(255,255,255,0.08);
 
   /* Shadows */
@@ -113,7 +113,7 @@ input, textarea {
 
 /* ── Glass morphism ── */
 .glass {
-  background: rgba(18,16,13,0.85);
+  background: rgba(12,11,9,0.75);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255,255,255,0.08);

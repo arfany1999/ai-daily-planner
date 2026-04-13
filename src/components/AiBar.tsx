@@ -401,7 +401,7 @@ export default function AiBar() {
 
       {/* ── Input bar ─────────────────────────────────────────────────────── */}
       <div style={{
-        background: 'rgba(243,237,225,0.96)',
+        background: 'var(--ai-bar-bg)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
         borderTop: `1px solid var(--subtle-border)`,
