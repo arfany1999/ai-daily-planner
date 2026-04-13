@@ -137,7 +137,7 @@ export default function SettingsPage() {
   const [conns, setConns] = useState({ google: true, gmail: true, canvas: false });
   const [googleToast, setGoogleToast] = useState('');
   const [activeTab, setActiveTab] = useState<'general' | 'premium'>('general');
-  const [sub, setSub] = useState<{ isPremium?: boolean; inTrial?: boolean; trialDaysLeft?: number; subscriptionEnd?: string | null } | null>(null);
+  const [sub, setSub] = useState<{ isPremium?: boolean; isAdmin?: boolean; inTrial?: boolean; trialDaysLeft?: number; subscriptionEnd?: string | null; stripeCustomerId?: string | null } | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
@@ -231,14 +231,22 @@ export default function SettingsPage() {
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7c3aed', marginBottom: 6 }}>
               AI Daily Premium
             </div>
-            {sub?.isPremium ? (
+            {sub?.isAdmin ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 22 }}>👑</span>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Owner — Unlimited Access</div>
+                  <div style={{ fontSize: 12, color: T.textSoft, marginTop: 2 }}>All features unlocked. No subscription required.</div>
+                </div>
+              </div>
+            ) : sub?.isPremium ? (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <span style={{ fontSize: 18 }}>✦</span>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1510' }}>Active subscription</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Active subscription</div>
                     {sub.subscriptionEnd && (
-                      <div style={{ fontSize: 12, color: '#6b6358' }}>
+                      <div style={{ fontSize: 12, color: T.textSoft }}>
                         Renews {new Date(sub.subscriptionEnd).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </div>
                     )}
