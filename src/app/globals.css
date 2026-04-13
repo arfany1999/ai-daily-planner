@@ -15,7 +15,7 @@
   --bg: transparent;
   --bg2: #151310;
   --bg3: #1E1A15;
-  --card: rgba(255,255,255,0.07);
+  --card: transparent;
   --border: rgba(255,255,255,0.09);
 
   /* Text — bright warm whites, clear hierarchy */
@@ -40,7 +40,7 @@
   /* Glass / surfaces */
   --glass: rgba(12,11,9,0.75);
   --glass-brd: rgba(255,255,255,0.08);
-  --surface: rgba(255,255,255,0.06);
+  --surface: transparent;
   --surface-hover: rgba(255,255,255,0.06);
   --surface-input: rgba(255,255,255,0.08);
 
@@ -268,24 +268,24 @@ input, textarea {
 
 /* ── Fix hardcoded light-mode inline styles ── */
 
-/* White/light backgrounds → dark surface */
+/* White/light backgrounds → transparent */
 [style*="background: rgba(255,255,255"],
 [style*="background: rgba(243,237,225"],
 [style*="background: rgba(240,234,216"],
 [style*="background: rgba(238,232,218"] {
-  background: var(--surface) !important;
+  background: transparent !important;
 }
 .app-main-content [style*="background: rgba(255,255,255"] {
-  background: var(--surface) !important;
+  background: transparent !important;
   border-color: var(--border) !important;
 }
 
-/* Light-mode gradients → dark surface */
+/* Light-mode gradients → transparent */
 [style*="background: linear-gradient(135deg, rgba(74,110"],
 [style*="background: linear-gradient(135deg, rgba(240,170"],
 [style*="background: linear-gradient(135deg, rgba(230,120"],
 [style*="background: linear-gradient(135deg, rgba(124,58"] {
-  background: var(--surface) !important;
+  background: transparent !important;
 }
 
 /* Inset shadows → dark shadows */
