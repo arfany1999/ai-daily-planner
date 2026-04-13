@@ -44,11 +44,11 @@
   --surface-hover: rgba(255,255,255,0.06);
   --surface-input: rgba(255,255,255,0.08);
 
-  /* Shell — frosted dark (semi-transparent so grid shows through) */
-  --nav-bg: rgba(12,11,9,0.75);
-  --nav-bg-solid: rgba(12,11,9,0.88);
-  --bottom-nav-bg: rgba(12,11,9,0.8);
-  --ai-bar-bg: rgba(12,11,9,0.78);
+  /* Shell — transparent, grid shows through */
+  --nav-bg: transparent;
+  --nav-bg-solid: transparent;
+  --bottom-nav-bg: transparent;
+  --ai-bar-bg: transparent;
   --subtle-border: rgba(255,255,255,0.08);
 
   /* Shadows */
