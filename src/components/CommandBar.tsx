@@ -160,24 +160,38 @@ export default function CommandBar() {
     R.start();
   };
 
-  // Execute
+  // Execute via agentic loop
   const execute = async () => {
     if (!parsed) return;
     if (parsed.intent === 'jump' && parsed.route) { router.push(parsed.route); closeBar(); return; }
-    if (parsed.intent === 'ask') { askInline(parsed.raw); return; }
     if (parsed.intent === 'reschedule') { proposeReschedule(parsed); return; }
 
+    // Route everything else (schedule/delete/complete/ask/search) through the agent
     setExecuting(true);
+    setMode('executing');
     try {
-      const res = await fetch('/api/command/execute', {
+      const res = await fetch('/api/agent/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsed),
+        body: JSON.stringify({ message: parsed.raw, source: 'commandbar' }),
       });
-      const d = await res.json() as { success?: boolean; error?: string };
-      if (d.success) { closeBar(); window.dispatchEvent(new CustomEvent('cmd-data-changed')); }
-      else setMode('error');
-    } catch {
+      const d = await res.json() as { text?: string; actions?: { tool: string; input: Record<string, unknown>; result: { ok: boolean; action?: string; error?: string } }[]; error?: string };
+      if (d.error) {
+        setStreamText(`Error: ${d.error}`);
+        setMode('error');
+      } else {
+        const actionsText = (d.actions || [])
+          .filter(a => a.result?.ok && a.result.action)
+          .map(a => `✓ ${a.result.action}`)
+          .join('\n');
+        setStreamText([d.text || '', actionsText].filter(Boolean).join('\n\n'));
+        setMode('ready');
+        if (d.actions && d.actions.length > 0) {
+          window.dispatchEvent(new CustomEvent('cmd-data-changed'));
+        }
+      }
+    } catch (e) {
+      setStreamText(`Network error: ${e instanceof Error ? e.message : 'unknown'}`);
       setMode('error');
     }
     setExecuting(false);

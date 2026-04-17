@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { T, DOMAINS, inferDomainFromTitle, urgencyToDomain, melbSunTimes } from '@/lib/theme';
 import DayTicker from '@/components/DayTicker';
+import SkippedBlockCard from '@/components/SkippedBlockCard';
 
 const TZ = 'Australia/Melbourne';
 
@@ -252,6 +253,10 @@ export default function HomePage() {
   const nowBlock = merged.find(isBlockNow);
   const nextBlock = merged.find(b => !isBlockPast(b) && !isBlockNow(b));
 
+  // Study-coach: past-ended task blocks not marked complete → show skip card (max 2)
+  const skippedBlocks = allTasks.filter(b => isBlockPast(b) && !doneToday.has(b.id)).slice(0, 2);
+  const todayDateStr = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
+
   const topPriorities = todayPlan?.top_priorities?.slice(0, 3) || [];
   const nudges = todayPlan?.nudges?.slice(0, 3) || [];
 
@@ -317,6 +322,18 @@ export default function HomePage() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Study-coach: skipped blocks */}
+        {skippedBlocks.length > 0 && (
+          <div className="anim-slide" style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 10.5, color: T.textFaint, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+              Coach · unresolved
+            </div>
+            {skippedBlocks.map(b => (
+              <SkippedBlockCard key={b.id} block={b} date={todayDateStr} />
+            ))}
           </div>
         )}
 

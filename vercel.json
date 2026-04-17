@@ -9,7 +9,7 @@
       "schedule": "0 21 * * *"
     },
     {
-      "path": "/api/agent/nudges",
+      "path": "/api/cron/agent",
       "schedule": "0 8 * * *"
     }
   ]
