@@ -2,8 +2,11 @@ import { supabaseAdmin } from './supabase';
 import { decrypt } from './encryption';
 
 const CANVAS_BASE = 'https://rmit.instructure.com/api/v1';
-const FETCH_TIMEOUT_MS = 8000;
-const MAX_PAGES = 3; // cap at 150 items per endpoint
+const FETCH_TIMEOUT_MS = 10000;
+const MAX_PAGES = 10; // 500 items per endpoint — captures full assignment history
+const ANNOUNCEMENT_DAYS = 90; // was 30
+const EVENT_FUTURE_DAYS = 120;
+const EVENT_PAST_DAYS = 30;
 
 export class CanvasAuthError extends Error {
   constructor(message: string) {
@@ -95,63 +98,128 @@ export interface CanvasAnnouncement {
   author: { display_name: string };
 }
 
+export interface CanvasQuiz {
+  id: number;
+  title: string;
+  course_id: number;
+  course_name?: string;
+  due_at: string | null;
+  unlock_at: string | null;
+  lock_at: string | null;
+  time_limit: number | null;
+  allowed_attempts: number | null;
+  question_count: number;
+  points_possible: number;
+  quiz_type: string;
+  html_url: string;
+  published: boolean;
+}
+
+export interface CanvasEvent {
+  id: number;
+  title: string;
+  start_at: string | null;
+  end_at: string | null;
+  description: string;
+  location_name: string | null;
+  context_code: string;
+  course_name?: string;
+  url: string;
+  type: string; // 'event' | 'assignment'
+}
+
 export interface CanvasData {
   courses: CanvasCourse[];
   assignments: CanvasAssignment[];
+  quizzes: CanvasQuiz[];
   announcements: CanvasAnnouncement[];
+  events: CanvasEvent[];
   fetched_at: string;
 }
 
 export async function fetchAllCanvasData(userId: string): Promise<CanvasData> {
   const token = await getCanvasToken(userId);
 
-  // 1. Fetch active courses
+  // 1. Fetch active courses — include all available states to catch late-starting courses
   const courses = await canvasFetch<CanvasCourse>(
     '/courses?enrollment_state=active&include[]=total_scores',
     token
   );
-  const activeCourses = courses.filter((c) => c.workflow_state === 'available');
+  // Keep 'available' and 'completed' (e.g. end-of-semester view)
+  const activeCourses = courses.filter((c) => c.workflow_state === 'available' || c.workflow_state === 'completed');
 
-  // 2. Fetch assignments for all courses IN PARALLEL
-  const assignmentResults = await Promise.allSettled(
-    activeCourses.map((course) =>
+  const courseNameById = new Map(activeCourses.map(c => [c.id, c.name]));
+
+  // 2-5. Fetch assignments, quizzes, events, announcements in parallel
+  const [assignmentResults, quizResults, eventsResult, announcementsResult] = await Promise.all([
+    // Assignments: all (submitted + unsubmitted + undated + past)
+    Promise.allSettled(activeCourses.map((course) =>
       canvasFetch<CanvasAssignment>(
-        `/courses/${course.id}/assignments?order_by=due_at&include[]=submission`,
+        `/courses/${course.id}/assignments?order_by=due_at&include[]=submission&include[]=all_dates`,
         token
-      ).then((assignments) => assignments.map((a) => ({ ...a, course_name: course.name })))
-    )
-  );
+      ).then((as) => as.map((a) => ({ ...a, course_name: course.name })))
+    )),
+    // Quizzes
+    Promise.allSettled(activeCourses.map((course) =>
+      canvasFetch<CanvasQuiz>(
+        `/courses/${course.id}/quizzes`,
+        token
+      ).then((qs) => qs.map((q) => ({ ...q, course_name: course.name, course_id: course.id })))
+        .catch(() => [] as CanvasQuiz[])
+    )),
+    // Calendar events across all courses (past + future window)
+    (async () => {
+      const contextCodes = activeCourses.map((c) => `course_${c.id}`).join('&context_codes[]=');
+      if (!contextCodes) return [] as CanvasEvent[];
+      const past = new Date(); past.setDate(past.getDate() - EVENT_PAST_DAYS);
+      const future = new Date(); future.setDate(future.getDate() + EVENT_FUTURE_DAYS);
+      try {
+        return await canvasFetch<CanvasEvent>(
+          `/calendar_events?context_codes[]=${contextCodes}&type=event&start_date=${past.toISOString()}&end_date=${future.toISOString()}&all_events=true`,
+          token
+        );
+      } catch { return [] as CanvasEvent[]; }
+    })(),
+    // Announcements — 90-day window, every course, not-just-latest
+    (async () => {
+      const contextCodes = activeCourses.map((c) => `course_${c.id}`).join('&context_codes[]=');
+      if (!contextCodes) return [] as CanvasAnnouncement[];
+      const start = new Date(); start.setDate(start.getDate() - ANNOUNCEMENT_DAYS);
+      try {
+        return await canvasFetch<CanvasAnnouncement>(
+          `/announcements?context_codes[]=${contextCodes}&start_date=${start.toISOString()}&latest_only=false`,
+          token
+        );
+      } catch { return [] as CanvasAnnouncement[]; }
+    })(),
+  ]);
 
   const allAssignments: CanvasAssignment[] = [];
-  for (const result of assignmentResults) {
-    if (result.status === 'fulfilled') allAssignments.push(...result.value);
-  }
+  for (const r of assignmentResults) if (r.status === 'fulfilled') allAssignments.push(...r.value);
 
-  // 3. Fetch announcements IN PARALLEL with assignments
-  const contextCodes = activeCourses.map((c) => `course_${c.id}`).join('&context_codes[]=');
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const allQuizzes: CanvasQuiz[] = [];
+  for (const r of quizResults) if (r.status === 'fulfilled') allQuizzes.push(...r.value);
 
-  let allAnnouncements: CanvasAnnouncement[] = [];
-  if (contextCodes) {
-    try {
-      allAnnouncements = await canvasFetch<CanvasAnnouncement>(
-        `/announcements?context_codes[]=${contextCodes}&start_date=${thirtyDaysAgo.toISOString()}&latest_only=false`,
-        token
-      );
-      const courseMap = new Map(activeCourses.map((c) => [`course_${c.id}`, c.name]));
-      for (const a of allAnnouncements) {
-        a.course_name = courseMap.get(a.context_code) || '';
-      }
-    } catch {
-      // Announcements failing is non-fatal
-    }
-  }
+  const events: CanvasEvent[] = eventsResult.map((e) => {
+    const ctx = e.context_code || '';
+    const idMatch = ctx.match(/^course_(\d+)$/);
+    const course_name = idMatch ? courseNameById.get(parseInt(idMatch[1], 10)) : '';
+    return { ...e, course_name: course_name || '' };
+  });
+
+  const allAnnouncements: CanvasAnnouncement[] = announcementsResult.map((a) => ({
+    ...a,
+    course_name: courseNameById.get(
+      parseInt((a.context_code || '').replace('course_', ''), 10)
+    ) || '',
+  }));
 
   return {
     courses: activeCourses,
     assignments: allAssignments,
+    quizzes: allQuizzes,
     announcements: allAnnouncements,
+    events,
     fetched_at: new Date().toISOString(),
   };
 }

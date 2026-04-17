@@ -11,6 +11,7 @@ interface Assignment {
   has_submitted_submissions: boolean;
   points_possible?: number;
   submission_types?: string[];
+  html_url?: string;
 }
 
 interface Announcement {
@@ -20,6 +21,31 @@ interface Announcement {
   posted_at: string;
   course_name: string;
   author: { display_name: string };
+}
+
+interface Quiz {
+  id: number;
+  title: string;
+  course_name: string;
+  due_at: string | null;
+  lock_at: string | null;
+  points_possible?: number;
+  question_count?: number;
+  time_limit?: number | null;
+  quiz_type?: string;
+  html_url?: string;
+  published?: boolean;
+}
+
+interface CEvent {
+  id: number;
+  title: string;
+  start_at: string | null;
+  end_at: string | null;
+  course_name: string;
+  location_name?: string | null;
+  description?: string;
+  url?: string;
 }
 
 interface Course {
@@ -32,6 +58,8 @@ interface CanvasData {
   courses: Course[];
   assignments: Assignment[];
   announcements: Announcement[];
+  quizzes?: Quiz[];
+  events?: CEvent[];
 }
 
 function daysUntil(dateStr: string): number {
@@ -207,42 +235,72 @@ export default function CanvasPage() {
 
   // ── Build per-course data ──────────────────────────────────────────────────
   const courses = data.courses;
+  const quizzes = data.quizzes || [];
+  const events = data.events || [];
 
   // Assign a color per course
   const courseColorMap: Record<string, string> = {};
   courses.forEach((c, i) => { courseColorMap[c.name] = COURSE_COLORS[i % COURSE_COLORS.length]; });
 
+  // Merge assignments + quizzes into a unified stream so nothing is missed
+  // (quizzes often ARE assignments in Canvas but sometimes stand alone).
+  // Keep the richest record per (course, title) — prefer assignment version
+  // since it has submission state.
+  const quizAsAssignment: Assignment[] = quizzes.map(q => ({
+    id: q.id + 1_000_000_000, // disambiguate namespace
+    name: q.title,
+    course_name: q.course_name,
+    due_at: q.due_at,
+    has_submitted_submissions: false, // Canvas quiz API doesn't return this here
+    points_possible: q.points_possible,
+    submission_types: ['online_quiz'],
+    html_url: q.html_url,
+  }));
+  // Dedupe: a Canvas quiz linked to an assignment shows up in both endpoints
+  const aKeys = new Set(data.assignments.map(a => `${a.course_name}::${a.name}`));
+  const uniqueQuizEntries = quizAsAssignment.filter(q => !aKeys.has(`${q.course_name}::${q.name}`));
+  const allItems = [...data.assignments, ...uniqueQuizEntries];
+
   // For "All" tab: pending across all courses sorted by urgency
-  const allPending = data.assignments
+  const allPending = allItems
     .filter(a => a.due_at && daysUntil(a.due_at) >= 0 && !a.has_submitted_submissions)
     .sort((a, b) => new Date(a.due_at!).getTime() - new Date(b.due_at!).getTime());
 
-  const allSubmitted = data.assignments
+  const allSubmitted = allItems
     .filter(a => a.has_submitted_submissions)
     .sort((a, b) => (a.due_at && b.due_at) ? new Date(b.due_at).getTime() - new Date(a.due_at).getTime() : 0);
 
-  const allOverdue = data.assignments
+  const allOverdue = allItems
     .filter(a => a.due_at && daysUntil(a.due_at) < 0 && !a.has_submitted_submissions);
 
-  const tabs = [
-    { key: 'all', label: 'All', code: 'ALL' },
-    ...courses.map((c, i) => ({ key: c.name, label: c.name, code: courseCode(c.name), color: COURSE_COLORS[i % COURSE_COLORS.length] })),
-    { key: 'announcements', label: 'Announcements', code: 'NEWS' },
+  // NEW: Undated — assignments with no due_at, not submitted (ongoing / self-paced)
+  const allUndated = allItems
+    .filter(a => !a.due_at && !a.has_submitted_submissions);
+
+  // Tabs: "All" + one per course (course_code label, e.g. BIOL2468) + Announcements
+  const tabs: { key: string; label: string; color?: string }[] = [
+    { key: 'all', label: 'All' },
+    ...courses.map((c, i) => ({
+      key: c.name,
+      label: (c.course_code || courseCode(c.name)).toUpperCase(),
+      color: COURSE_COLORS[i % COURSE_COLORS.length],
+    })),
+    { key: 'announcements', label: 'News' },
   ];
 
   const activeCourse = activeTab !== 'all' && activeTab !== 'announcements' ? courses.find(c => c.name === activeTab) : null;
 
-  const visiblePending = activeCourse
-    ? allPending.filter(a => a.course_name === activeTab)
-    : allPending;
+  const visiblePending = activeCourse ? allPending.filter(a => a.course_name === activeTab) : allPending;
+  const visibleSubmitted = activeCourse ? allSubmitted.filter(a => a.course_name === activeTab) : allSubmitted;
+  const visibleOverdue = activeCourse ? allOverdue.filter(a => a.course_name === activeTab) : allOverdue;
+  const visibleUndated = activeCourse ? allUndated.filter(a => a.course_name === activeTab) : allUndated;
 
-  const visibleSubmitted = activeCourse
-    ? allSubmitted.filter(a => a.course_name === activeTab)
-    : allSubmitted;
-
-  const visibleOverdue = activeCourse
-    ? allOverdue.filter(a => a.course_name === activeTab)
-    : allOverdue;
+  // Upcoming Canvas-scheduled events (lectures, labs, etc — the ones on Canvas calendar)
+  const upcomingEvents = events
+    .filter(e => e.start_at && new Date(e.start_at).getTime() > Date.now())
+    .sort((a, b) => new Date(a.start_at!).getTime() - new Date(b.start_at!).getTime())
+    .slice(0, activeCourse ? 12 : 6);
+  const visibleEvents = activeCourse ? upcomingEvents.filter(e => e.course_name === activeTab) : upcomingEvents;
 
   const visibleAnnouncements = (activeCourse
     ? data.announcements.filter(a => a.course_name === activeTab)
@@ -261,7 +319,7 @@ export default function CanvasPage() {
           <div>
             <div style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.5px' }}>Canvas</div>
             <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
-              {courses.length} courses · {allPending.length} pending · {allSubmitted.length} done
+              {courses.length} courses · {allPending.length} pending · {allOverdue.length} overdue · {allUndated.length} undated · {allSubmitted.length} done
               {stale && <span style={{ marginLeft: 8, color: T.yellow }}>cached</span>}
             </div>
           </div>
@@ -285,19 +343,20 @@ export default function CanvasPage() {
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, marginBottom: 16 }}>
         {tabs.map(t => {
           const isActive = activeTab === t.key;
-          const color = ('color' in t ? t.color : undefined) || T.teal;
+          const color = t.color || T.teal;
           return (
             <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
               flexShrink: 0,
               padding: '7px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: isActive ? color : 'rgba(255,255,255,0.06)',
+              background: isActive ? color : 'var(--surface)',
               color: isActive ? '#fff' : T.textMuted,
               fontSize: 11, fontWeight: 700,
-              boxShadow: isActive ? `0 3px 12px ${color}30` : '0 1px 4px rgba(0,0,0,0.06)',
-              transition: 'all 0.18s cubic-bezier(0.34,1.56,0.64,1)',
+              boxShadow: isActive ? `0 3px 12px ${color}30` : 'none',
+              transition: 'all 0.18s var(--ease-spring)',
               transform: isActive ? 'scale(1.04)' : 'scale(1)',
+              letterSpacing: '-0.01em',
             }}>
-              {t.code}
+              {t.label}
             </button>
           );
         })}
@@ -361,15 +420,56 @@ export default function CanvasPage() {
             </>
           )}
 
-          {visiblePending.length === 0 && visibleOverdue.length === 0 && (
+          {visiblePending.length === 0 && visibleOverdue.length === 0 && visibleUndated.length === 0 && (
             <div style={{
               textAlign: 'center', padding: '28px 20px',
               background: 'rgba(11,128,67,0.07)', borderRadius: 16, border: '1px solid rgba(11,128,67,0.15)',
             }}>
               <div style={{ fontSize: 22, marginBottom: 8 }}>✅</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#0B8043' }}>All caught up!</div>
-              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>No pending assignments for this course.</div>
+              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>No pending items for this tab.</div>
             </div>
+          )}
+
+          {/* Undated — open-ended items, no due date */}
+          {visibleUndated.length > 0 && (
+            <>
+              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.textMuted, marginBottom: 4, marginTop: 16 }}>
+                Undated · {visibleUndated.length}
+              </div>
+              {visibleUndated.map(a => (
+                <AssignmentCard key={a.id} a={a} courseColor={courseColorMap[a.course_name] || T.teal} showCourse={!activeCourse} />
+              ))}
+            </>
+          )}
+
+          {/* Canvas calendar events (lectures, labs, key dates) */}
+          {visibleEvents.length > 0 && (
+            <>
+              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.textMuted, marginTop: 18, marginBottom: 4 }}>
+                Upcoming events · {visibleEvents.length}
+              </div>
+              {visibleEvents.map(e => {
+                const color = courseColorMap[e.course_name] || T.teal;
+                const when = e.start_at ? new Date(e.start_at).toLocaleDateString('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+                return (
+                  <a key={e.id} href={e.url || '#'} target="_blank" rel="noopener noreferrer" style={{
+                    display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none',
+                    padding: '10px 14px', marginBottom: 4,
+                    background: 'var(--surface)', border: '1px solid var(--border)',
+                    borderLeft: `3px solid ${color}`, borderRadius: '0 12px 12px 0',
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.title}</div>
+                      <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2 }}>
+                        {!activeCourse && <span style={{ color, fontWeight: 600, marginRight: 6 }}>{e.course_name}</span>}
+                        {when}{e.location_name ? ` · ${e.location_name}` : ''}
+                      </div>
+                    </div>
+                  </a>
+                );
+              })}
+            </>
           )}
 
           {/* Announcements strip for course tabs */}
