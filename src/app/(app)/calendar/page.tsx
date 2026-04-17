@@ -47,6 +47,10 @@ function fmt12(iso: string): string {
   const a = h >= 12 ? 'pm' : 'am';
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${a}`;
 }
+function cleanTitle(title: string): string {
+  // Strip "[AI]" prefix we add when mirroring to Google Calendar
+  return (title || '').replace(/^\[AI\]\s*/, '').trim();
+}
 function fmtHour(h: number) {
   if (h === 0) return '12';
   if (h === 12) return '12';
@@ -122,10 +126,14 @@ function DayView({ events, dateStr }: { events: CalEvent[]; dateStr: string }) {
             const d = eventDomain(ev);
             return (
               <div key={ev.id} style={{
-                padding: '3px 10px', borderRadius: 6,
-                fontSize: 11, fontWeight: 600,
-                background: d.color + '22', color: d.color, border: `1px solid ${d.color}40`,
-              }}>{ev.title}</div>
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '4px 10px 4px 8px', borderRadius: 6,
+                fontSize: 11.5, fontWeight: 600, color: T.text,
+                background: d.color + '18', border: `1px solid ${d.color}45`,
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
+                {cleanTitle(ev.title)}
+              </div>
             );
           })}
         </div>
@@ -141,8 +149,9 @@ function DayView({ events, dateStr }: { events: CalEvent[]; dateStr: string }) {
             }}>
               <span className="mono" style={{
                 position: 'absolute', left: 6, top: -7,
-                fontSize: 10, color: T.textFaint, fontWeight: 600,
-                userSelect: 'none', background: 'var(--bg)', padding: '0 4px',
+                fontSize: 10, color: T.textMuted, fontWeight: 700,
+                userSelect: 'none', background: 'var(--bg)',
+                padding: '1px 5px', borderRadius: 3, letterSpacing: '-0.02em',
               }}>{fmtHour(h)}</span>
             </div>
           ))}
@@ -167,34 +176,38 @@ function DayView({ events, dateStr }: { events: CalEvent[]; dateStr: string }) {
             const { h: eh, m: em } = melbParts(ev.end);
             const s = sh * 60 + sm; const e = Math.max(eh * 60 + em, s + 15);
             const top = ((s / 60) - DAY_START) * HOUR_HEIGHT;
-            const height = Math.max(((e - s) / 60) * HOUR_HEIGHT, 22);
+            const height = Math.max(((e - s) / 60) * HOUR_HEIGHT, 24);
             const d = eventDomain(ev);
-            const short = height < 36;
+            const short = height < 40;
             const colWidth = `calc((100% - ${GUTTER}px - 8px) / ${totalCols})`;
             const colLeft = `calc(${GUTTER}px + ${col} * (100% - ${GUTTER}px - 8px) / ${totalCols})`;
             return (
               <div key={ev.id} style={{
                 position: 'absolute', top: top + 1, left: colLeft, width: colWidth,
                 height: height - 2, zIndex: 10,
-                background: d.color + '1a',
+                background: d.color + '18',
                 borderLeft: `3px solid ${d.color}`,
-                borderRadius: '0 6px 6px 0',
-                padding: short ? '2px 7px' : '5px 8px',
+                borderRadius: '6px 8px 8px 6px',
+                padding: short ? '3px 8px 3px 9px' : '6px 10px 6px 9px',
                 overflow: 'hidden',
                 boxSizing: 'border-box',
                 cursor: 'default',
-                transition: 'transform 0.12s ease, background 0.12s ease',
+                transition: 'background 0.12s ease, box-shadow 0.12s ease',
+                boxShadow: `0 1px 3px ${d.color}14`,
               }}
-              onMouseEnter={el => (el.currentTarget.style.background = d.color + '2a')}
-              onMouseLeave={el => (el.currentTarget.style.background = d.color + '1a')}
+              onMouseEnter={el => { el.currentTarget.style.background = d.color + '28'; el.currentTarget.style.boxShadow = `0 2px 8px ${d.color}25`; }}
+              onMouseLeave={el => { el.currentTarget.style.background = d.color + '18'; el.currentTarget.style.boxShadow = `0 1px 3px ${d.color}14`; }}
               >
-                <div style={{
-                  fontSize: short ? 10.5 : 12, fontWeight: 600, color: d.color,
+                <div className="title-display" style={{
+                  fontSize: short ? 11.5 : 13, fontWeight: 700, color: T.text,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  lineHeight: 1.2,
-                }}>{ev.title}</div>
+                  lineHeight: 1.25, letterSpacing: '-0.01em',
+                }}>{cleanTitle(ev.title)}</div>
                 {!short && (
-                  <div className="mono" style={{ fontSize: 9.5, color: d.color, opacity: 0.75, marginTop: 2, fontWeight: 500 }}>
+                  <div className="mono" style={{
+                    fontSize: 10, color: d.color, marginTop: 3, fontWeight: 600,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>
                     {fmt12(ev.start)} – {fmt12(ev.end)}
                   </div>
                 )}
@@ -296,23 +309,32 @@ function WeekView({ events, weekStart, onPickDay }: { events: CalEvent[]; weekSt
                   const { h: eh, m: em } = melbParts(ev.end);
                   const s = sh * 60 + sm; const e = Math.max(eh * 60 + em, s + 15);
                   const top = ((s / 60) - DAY_START) * HOUR_HEIGHT;
-                  const height = Math.max(((e - s) / 60) * HOUR_HEIGHT, 14);
+                  const height = Math.max(((e - s) / 60) * HOUR_HEIGHT, 18);
                   const dm = eventDomain(ev);
+                  const tooShort = height < 26;
                   return (
                     <div key={ev.id} style={{
                       position: 'absolute', zIndex: 5,
                       top: top + 1,
                       left: `calc(${c} * 100% / ${totalCols} + 1px)`,
                       width: `calc(100% / ${totalCols} - 2px)`,
-                      height: Math.max(height - 2, 12),
-                      background: dm.color + '26',
+                      height: Math.max(height - 2, 16),
+                      background: dm.color + '22',
                       borderLeft: `2px solid ${dm.color}`,
-                      borderRadius: '0 4px 4px 0',
-                      padding: '2px 4px', overflow: 'hidden',
+                      borderRadius: '3px 5px 5px 3px',
+                      padding: '2px 4px 2px 5px', overflow: 'hidden',
                     }}>
-                      <div style={{ fontSize: 9.5, fontWeight: 600, color: dm.color, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {ev.title}
-                      </div>
+                      <div className="title-display" style={{
+                        fontSize: tooShort ? 9.5 : 10.5,
+                        fontWeight: 700, color: T.text, lineHeight: 1.2,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        letterSpacing: '-0.01em',
+                      }}>{cleanTitle(ev.title)}</div>
+                      {!tooShort && (
+                        <div className="mono" style={{ fontSize: 8.5, fontWeight: 600, color: dm.color, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {fmt12(ev.start).replace(' ', '')}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -385,16 +407,24 @@ function MonthView({ events, baseDate, selectedDate, onPickDay }: { events: CalE
                     const dm = eventDomain(ev);
                     return (
                       <div key={ev.id} style={{
-                        fontSize: 9.5, fontWeight: 600, padding: '2px 5px', borderRadius: 3, marginBottom: 2,
-                        background: dm.color + '22', color: dm.color,
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        fontSize: 10, fontWeight: 600, padding: '2px 6px 2px 4px',
+                        borderRadius: 4, marginBottom: 2,
+                        background: dm.color + '20', color: T.text,
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        letterSpacing: '-0.01em',
                       }}>
-                        {ev.allDay ? ev.title : `${fmt12(ev.start).replace(' ', '')} ${ev.title}`}
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: dm.color, flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {ev.allDay ? cleanTitle(ev.title) : (
+                            <><span className="mono" style={{ color: dm.color, fontWeight: 700, marginRight: 3 }}>{fmt12(ev.start).replace(' ', '').replace(':00', '')}</span>{cleanTitle(ev.title)}</>
+                          )}
+                        </span>
                       </div>
                     );
                   })}
                   {dayEvs.length > 3 && (
-                    <div className="mono" style={{ fontSize: 9, color: T.textMuted, paddingLeft: 5 }}>+{dayEvs.length - 3}</div>
+                    <div className="mono" style={{ fontSize: 9, color: T.textMuted, paddingLeft: 6, fontWeight: 600 }}>+{dayEvs.length - 3} more</div>
                   )}
                 </button>
               );
@@ -507,8 +537,8 @@ export default function CalendarPage() {
       {/* DayTicker (always visible) */}
       <DayTicker selected={selectedDate} onSelect={setSelectedDate} daysBefore={14} daysAfter={60} />
 
-      {/* Domain legend — color key for events */}
-      <div style={{
+      {/* Domain legend — color key for events (desktop only) */}
+      <div className="hide-mobile" style={{
         display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
         padding: '8px 14px',
         background: 'var(--glass)',
