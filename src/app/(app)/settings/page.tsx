@@ -326,27 +326,65 @@ export default function SettingsPage() {
           Built-in connections
         </div>
         {[
-          { key: 'google', label: 'Google Calendar', desc: 'Calendar events + scheduling', icon: '📅', connected: conns.google },
-          { key: 'gmail', label: 'Gmail', desc: 'Email highlights in briefings', icon: '📧', connected: conns.gmail },
-          { key: 'canvas', label: 'RMIT Canvas', desc: 'Assignments, announcements, files', icon: '🎓', connected: conns.canvas },
+          { key: 'google', label: 'Google Calendar', desc: 'Required — AI Planner mirrors your schedule 1:1', icon: '📅', connected: conns.google, required: true },
+          { key: 'gmail', label: 'Gmail', desc: 'Email highlights in briefings', icon: '📧', connected: conns.gmail, required: false },
+          { key: 'canvas', label: 'RMIT Canvas', desc: 'Optional — assignments, announcements, deadlines', icon: '🎓', connected: conns.canvas, required: false },
         ].map((c) => (
           <div key={c.key} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
             padding: '12px 0', borderBottom: `1px solid ${T.border}`,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 18 }}>{c.icon}</span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{c.label}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 18, flexShrink: 0 }}>{c.icon}</span>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {c.label}
+                  {c.required && (
+                    <span style={{
+                      fontSize: 8.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                      padding: '2px 5px', borderRadius: 3,
+                      background: T.red + '18', color: T.red,
+                    }}>Required</span>
+                  )}
+                </div>
                 <div style={{ fontSize: 11, color: T.textSoft, fontWeight: 300 }}>{c.desc}</div>
               </div>
             </div>
-            <div style={{
-              fontSize: 10, fontWeight: 600, padding: '4px 10px', borderRadius: 5,
-              background: c.connected ? T.green + '15' : T.yellow + '15',
-              color: c.connected ? T.green : T.yellow,
-            }}>
-              {c.connected ? 'Connected' : 'Not connected'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <div style={{
+                fontSize: 10, fontWeight: 600, padding: '4px 10px', borderRadius: 5,
+                background: c.connected ? T.green + '15' : T.yellow + '15',
+                color: c.connected ? T.green : T.yellow,
+              }}>
+                {c.connected ? 'On' : 'Off'}
+              </div>
+              {c.key === 'canvas' && c.connected && (
+                <button
+                  onClick={async () => {
+                    if (!window.confirm('Disconnect Canvas? AI Planner will stop syncing RMIT data.')) return;
+                    await fetch('/api/settings/canvas-token', { method: 'DELETE' }).catch(() => {});
+                    setConns((prev) => ({ ...prev, canvas: false }));
+                  }}
+                  style={{
+                    fontSize: 10.5, padding: '4px 10px', borderRadius: 5,
+                    background: 'transparent', border: `1px solid ${T.border}`,
+                    color: T.textMuted, cursor: 'pointer', fontWeight: 600,
+                  }}
+                >Disconnect</button>
+              )}
+              {c.key === 'canvas' && !c.connected && (
+                <button
+                  onClick={() => {
+                    const el = document.querySelector('[data-canvas-entry]') as HTMLElement | null;
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}
+                  style={{
+                    fontSize: 10.5, padding: '4px 10px', borderRadius: 5,
+                    background: 'var(--teal-glow)', border: '1px solid var(--teal-brd)',
+                    color: T.teal, cursor: 'pointer', fontWeight: 600,
+                  }}
+                >Connect</button>
+              )}
             </div>
           </div>
         ))}
@@ -388,7 +426,9 @@ export default function SettingsPage() {
 
       {/* Canvas token entry (if not connected) */}
       {!conns.canvas && (
-        <CanvasTokenEntry onConnected={() => setConns((c) => ({ ...c, canvas: true }))} />
+        <div data-canvas-entry>
+          <CanvasTokenEntry onConnected={() => setConns((c) => ({ ...c, canvas: true }))} />
+        </div>
       )}
 
       {/* Schedule settings — editable */}

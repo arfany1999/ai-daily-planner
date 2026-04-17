@@ -1,5 +1,6 @@
 import { supabaseAdmin } from './supabase';
 import { sendPushToUser } from './push';
+import { createGcalEvent, updateGcalEvent, deleteGcalEvent } from './google';
 
 const TZ = 'Australia/Melbourne';
 
@@ -18,6 +19,7 @@ interface TimelineBlock {
   domain?: string;
   description?: string;
   estimated_minutes?: number;
+  google_event_id?: string;
 }
 
 export interface ToolResult {
@@ -209,28 +211,68 @@ export async function executeTool(userId: string, name: string, input: Record<st
       case 'create_block': {
         const date = input.date as string;
         const plan = await getPlan(userId, date);
+        const domain = (input.domain as string) || 'admin';
+        const title = input.title as string;
+        const start_time = input.start_time as string;
+        const end_time = input.end_time as string;
+        const description = (input.description as string) || '';
+
+        // Mirror to Google Calendar first so we can store the event id on the block
+        const gcalId = await createGcalEvent(userId, {
+          title, date, start_time, end_time, description, domain,
+        });
+
         const block: TimelineBlock = {
           id: crypto.randomUUID(),
-          task_name: input.title as string,
-          start_time: input.start_time as string,
-          end_time: input.end_time as string,
-          urgency: urgencyForDomain(input.domain as string),
-          domain: input.domain as string,
-          description: (input.description as string) || '',
+          task_name: title,
+          start_time, end_time,
+          urgency: urgencyForDomain(domain),
+          domain,
+          description,
+          google_event_id: gcalId || undefined,
         };
         plan.timeline = [...plan.timeline, block].sort((a, b) => a.start_time.localeCompare(b.start_time));
         await savePlan(userId, date, plan);
-        return { ok: true, action: `created block ${block.id}`, data: block };
+        return {
+          ok: true,
+          action: `created block ${block.id}${gcalId ? ' (synced to Google Calendar)' : ' (Google mirror skipped)'}`,
+          data: block,
+        };
       }
       case 'move_block': {
         const from = input.from_date as string;
         const to = input.new_date as string;
         const id = input.block_id as string;
+        const new_start_time = input.new_start_time as string;
+        const new_end_time = input.new_end_time as string;
         const planFrom = await getPlan(userId, from);
         const idx = planFrom.timeline.findIndex(b => b.id === id);
         if (idx === -1) return { ok: false, error: `Block ${id} not found on ${from}` };
         const block = planFrom.timeline[idx];
-        const updated: TimelineBlock = { ...block, start_time: input.new_start_time as string, end_time: input.new_end_time as string };
+        const updated: TimelineBlock = { ...block, start_time: new_start_time, end_time: new_end_time };
+
+        // Mirror to Google Calendar — patch existing event if we have one, else create fresh
+        if (block.google_event_id) {
+          const ok = await updateGcalEvent(userId, block.google_event_id, {
+            title: block.task_name, date: to, start_time: new_start_time, end_time: new_end_time,
+            description: block.description, domain: block.domain,
+          });
+          if (!ok) {
+            // Stale/missing event — recreate
+            const fresh = await createGcalEvent(userId, {
+              title: block.task_name, date: to, start_time: new_start_time, end_time: new_end_time,
+              description: block.description, domain: block.domain,
+            });
+            if (fresh) updated.google_event_id = fresh;
+          }
+        } else {
+          const fresh = await createGcalEvent(userId, {
+            title: block.task_name, date: to, start_time: new_start_time, end_time: new_end_time,
+            description: block.description, domain: block.domain,
+          });
+          if (fresh) updated.google_event_id = fresh;
+        }
+
         if (from === to) {
           planFrom.timeline[idx] = updated;
           planFrom.timeline = planFrom.timeline.sort((a, b) => a.start_time.localeCompare(b.start_time));
@@ -242,15 +284,19 @@ export async function executeTool(userId: string, name: string, input: Record<st
           planTo.timeline = [...planTo.timeline, updated].sort((a, b) => a.start_time.localeCompare(b.start_time));
           await savePlan(userId, to, planTo);
         }
-        return { ok: true, action: `moved block ${id} from ${from} to ${to} ${input.new_start_time}` };
+        return { ok: true, action: `moved block ${id} from ${from} to ${to} ${new_start_time} (Google Calendar updated)` };
       }
       case 'delete_block': {
         const date = input.date as string;
         const id = input.block_id as string;
         const plan = await getPlan(userId, date);
+        const block = plan.timeline.find(b => b.id === id);
+        if (block?.google_event_id) {
+          await deleteGcalEvent(userId, block.google_event_id);
+        }
         plan.timeline = plan.timeline.filter(b => b.id !== id);
         await savePlan(userId, date, plan);
-        return { ok: true, action: `deleted block ${id}` };
+        return { ok: true, action: `deleted block ${id}${block?.google_event_id ? ' (removed from Google Calendar)' : ''}` };
       }
       case 'complete_block': {
         const id = input.block_id as string;

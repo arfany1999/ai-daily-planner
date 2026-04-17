@@ -30,3 +30,12 @@ export const POST = withAuth(async (req, userId) => {
     return NextResponse.json({ error: 'Failed to validate', message: error instanceof Error ? error.message : 'Unknown' }, { status: 500 });
   }
 });
+
+export const DELETE = withAuth(async (_req, userId) => {
+  await supabaseAdmin.from('users').update({
+    canvas_token: null,
+    canvas_connected: false,
+  }).eq('id', userId);
+  await supabaseAdmin.from('canvas_cache').delete().eq('user_id', userId);
+  return NextResponse.json({ success: true });
+});

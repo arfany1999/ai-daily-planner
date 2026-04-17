@@ -121,6 +121,7 @@ export default function HomePage() {
   const { data: session } = useSession();
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
   const [todayPlan, setTodayPlan] = useState<TodayPlan | null>(null);
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [calEvents, setCalEvents] = useState<CalEvent[]>([]);
@@ -137,9 +138,11 @@ export default function HomePage() {
     Promise.all([
       fetch('/api/settings').then((r) => r.json()).catch(() => ({})),
       fetch('/api/briefing').then((r) => r.json()).catch(() => ({})),
-    ]).then(([settings, briefD]) => {
+      fetch('/api/health').then((r) => r.json()).catch(() => ({ checks: {} })),
+    ]).then(([settings, briefD, healthD]) => {
       if (settings.setup_complete === false) { router.push('/setup'); return; }
       if (briefD.briefing) setBriefing(briefD.briefing as Briefing);
+      setGoogleConnected((healthD?.checks?.google?.status === 'ok'));
       setReady(true);
     }).catch(() => setReady(true));
 
@@ -315,6 +318,57 @@ export default function HomePage() {
   return (
     <>
       <DayTicker selected={selectedDate} onSelect={setSelectedDate} daysBefore={7} daysAfter={60} />
+
+      {/* Google Calendar connection banner — shows until user connects */}
+      {googleConnected === false && (
+        <div style={{
+          margin: '10px 16px 0',
+          padding: '14px 16px',
+          background: 'linear-gradient(135deg, var(--teal-glow), rgba(110,139,232,0.08))',
+          border: '1px solid var(--teal-brd)',
+          borderRadius: 14,
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          }}>
+            <svg width="20" height="20" viewBox="0 0 48 48">
+              <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.9 33.6 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 5.7 29.2 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.2-2.7-.4-3.9z"/>
+              <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.4 18.8 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 5.7 29.2 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+              <path fill="#4CAF50" d="M24 44c5 0 9.6-1.6 13.2-4.4l-6.1-5.2C29 36 26.6 36.7 24 36.7c-5.4 0-9.9-3.4-11.5-8.2l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+              <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.1 5.2C36.9 39.2 44 34 44 24c0-1.3-.2-2.7-.4-3.9z"/>
+            </svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, letterSpacing: '-0.01em', marginBottom: 2 }}>
+              Connect Google Calendar
+            </div>
+            <div style={{ fontSize: 11.5, color: T.textSoft, lineHeight: 1.4 }}>
+              AI Planner mirrors your schedule 1:1 with Google. Every block you create here lands on your calendar.
+            </div>
+          </div>
+          <button
+            onClick={async () => {
+              const r = await fetch('/api/auth/google-connect', { method: 'POST' }).catch(() => null);
+              if (r) { const { url } = await r.json().catch(() => ({ url: null })); if (url) { window.location.href = url; return; } }
+              // Fallback: re-auth via NextAuth to grant calendar scope
+              window.location.href = '/api/auth/signin/google';
+            }}
+            style={{
+              flexShrink: 0,
+              padding: '8px 14px', borderRadius: 9,
+              background: `linear-gradient(135deg, var(--teal-dk), var(--teal-lt))`,
+              color: '#fff', border: 'none',
+              fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              boxShadow: '0 4px 12px var(--teal-glow)',
+            }}
+          >Connect</button>
+        </div>
+      )}
 
       <div style={{ padding: '18px 16px 40px', maxWidth: 1100, margin: '0 auto' }}>
         {/* Greeting — minimal, single column */}
