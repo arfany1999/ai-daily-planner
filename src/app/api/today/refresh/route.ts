@@ -102,7 +102,7 @@ ${semester ? `SEMESTER CONTEXT: ${JSON.stringify(semester)}` : ''}
 ${urgentDeadlines.length ? `⚠️ URGENT DEADLINES (≤5 days): ${JSON.stringify((urgentDeadlines as { name: string; due_at: string }[]).map(a => ({ name: a.name, due_at: a.due_at })))}` : ''}
 ${gymDays.length ? `GYM DAYS: ${gymDays.join(', ')}` : ''}`;
 
-    const response = await generateWithClaude(systemPrompt, dataMsg, { maxTokens: 4096 });
+    const response = await generateWithClaude(systemPrompt, dataMsg, { maxTokens: 4096, cacheSystem: true });
     const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, response];
     let todo;
     try {

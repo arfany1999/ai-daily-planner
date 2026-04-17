@@ -78,7 +78,7 @@ ${JSON.stringify(assignments, null, 2)}
 
 Generate smart study session suggestions that fit around my existing schedule.`;
 
-    const response = await generateWithClaude(systemPrompt, userMsg, { maxTokens: 2048 });
+    const response = await generateWithClaude(systemPrompt, userMsg, { maxTokens: 2048, cacheSystem: true });
 
     // Parse JSON
     const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, response];

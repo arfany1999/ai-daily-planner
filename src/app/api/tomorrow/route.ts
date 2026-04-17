@@ -199,7 +199,7 @@ YESTERDAY'S COMPLETION DATA:
 
 Generate the to-do for ${(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toLocaleDateString('en-AU', { timeZone: TIMEZONE, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); })()} (${tomorrowDate}).`;
 
-  const response = await generateWithClaude(systemPrompt, userMsg, { maxTokens: 4096 });
+  const response = await generateWithClaude(systemPrompt, userMsg, { maxTokens: 4096, cacheSystem: true });
 
   const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, response];
   const jsonStr = jsonMatch[1]?.trim() || response.trim();

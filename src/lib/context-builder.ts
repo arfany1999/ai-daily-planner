@@ -43,7 +43,74 @@ function cleanHtml(html: string, maxLen = 600): string {
     .slice(0, maxLen);
 }
 
-export async function buildContextText(userId: string, targetDate: string): Promise<string> {
+export type ContextScope = 'full' | 'brief';
+
+/**
+ * Build a compact context — ~30% the size of `full` — for fast/cheap
+ * agent or chat calls that only need today + next 7 days + urgent deadlines.
+ */
+export async function buildBriefContext(userId: string, targetDate: string): Promise<string> {
+  const [calRes, canvasRes, todoRes] = await Promise.all([
+    supabaseAdmin.from('calendar_cache').select('data').eq('user_id', userId).single(),
+    supabaseAdmin.from('canvas_cache').select('data').eq('user_id', userId).single(),
+    supabaseAdmin.from('todos').select('todo').eq('user_id', userId).eq('date', targetDate).single(),
+  ]);
+
+  const lines: string[] = [`=== BRIEF CONTEXT — ${targetDate} ===\n`];
+  const events: CalEvent[] = (calRes.data?.data as CalEvent[] | null) || [];
+  const from = new Date(targetDate + 'T00:00:00');
+  const to = new Date(from); to.setDate(to.getDate() + 7);
+  const upcoming = events
+    .filter(e => {
+      const raw = typeof e.start === 'string' ? e.start : (e.start?.dateTime || e.start?.date || '');
+      const d = new Date(raw); return d >= from && d <= to;
+    })
+    .sort((a, b) => {
+      const ar = typeof a.start === 'string' ? a.start : (a.start?.dateTime || a.start?.date || '');
+      const br = typeof b.start === 'string' ? b.start : (b.start?.dateTime || b.start?.date || '');
+      return new Date(ar).getTime() - new Date(br).getTime();
+    })
+    .slice(0, 15);
+
+  lines.push('📅 NEXT 7 DAYS:');
+  if (!upcoming.length) lines.push('  (nothing)');
+  for (const e of upcoming) {
+    const raw = typeof e.start === 'string' ? e.start : (e.start?.dateTime || e.start?.date || '');
+    const dt = new Date(raw);
+    const day = dt.toLocaleDateString('en-AU', { weekday: 'short', month: 'short', day: 'numeric', timeZone: TIMEZONE });
+    const hasTime = typeof e.start === 'object' && e.start?.dateTime;
+    const time = hasTime ? dt.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TIMEZONE }) : 'all-day';
+    lines.push(`  ${day} ${time} — ${e.title || e.summary || 'Untitled'}`);
+  }
+
+  const canvas = canvasRes.data?.data as { assignments?: Assignment[] } | null;
+  const urgentDeadlines = (canvas?.assignments || [])
+    .filter(a => !a.has_submitted_submissions && a.due_at)
+    .map(a => ({ ...a, days: Math.ceil((new Date(a.due_at!).getTime() - Date.now()) / 86400000) }))
+    .filter(a => a.days >= 0 && a.days <= 14)
+    .sort((a, b) => a.days - b.days)
+    .slice(0, 8);
+
+  lines.push('\n📚 UPCOMING DEADLINES (≤14 days):');
+  if (!urgentDeadlines.length) lines.push('  (none)');
+  for (const d of urgentDeadlines) {
+    lines.push(`  ${d.course_name} — ${d.name} — due in ${d.days}d`);
+  }
+
+  const today = todoRes.data?.todo as { timeline?: TItem[] } | null;
+  if (today?.timeline?.length) {
+    lines.push("\n📋 TODAY'S PLAN:");
+    for (const t of today.timeline.slice(0, 12)) {
+      lines.push(`  ${t.time || '—'} ${t.task_name || t.label || 'task'}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+export async function buildContextText(userId: string, targetDate: string, scope: ContextScope = 'full'): Promise<string> {
+  if (scope === 'brief') return buildBriefContext(userId, targetDate);
+
   const [calRes, canvasRes, emailRes, todoRes, completionsRes, gradesRes, progressRes, semRes] = await Promise.all([
     supabaseAdmin.from('calendar_cache').select('data').eq('user_id', userId).single(),
     supabaseAdmin.from('canvas_cache').select('data').eq('user_id', userId).single(),

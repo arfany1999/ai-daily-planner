@@ -33,7 +33,7 @@ export const GET = withAuth(async (_req, userId) => {
       .single();
 
     if (cached && isFresh(cached.created_at, 4)) {
-      return NextResponse.json({ briefing: cached.briefing, cached: true, stale: false });
+      return NextResponse.json({ briefing: cached.briefing, cached: true, stale: false }, { headers: { "Cache-Control": "private, max-age=120, stale-while-revalidate=600" } });
     }
 
     // Generate fresh briefing
@@ -47,7 +47,7 @@ export const GET = withAuth(async (_req, userId) => {
       created_at: new Date().toISOString(),
     }, { onConflict: 'user_id,date' });
 
-    return NextResponse.json({ briefing, cached: false, stale: false });
+    return NextResponse.json({ briefing, cached: false, stale: false }, { headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" } });
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
     await logError('api/briefing', msg, userId);
@@ -174,7 +174,7 @@ ${connectionResults.length > 0 ? `CUSTOM CONNECTIONS:\n${connectionResults.map((
 
 Today is ${new Date().toLocaleDateString('en-AU', { timeZone: TIMEZONE, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} (${getTodayDate()}). Generate the briefing starting from TODAY (include today's remaining events).`;
 
-  const response = await generateWithClaude(systemPrompt, dataMessage, { maxTokens: 4096 });
+  const response = await generateWithClaude(systemPrompt, dataMessage, { maxTokens: 4096, cacheSystem: true });
 
   // Parse JSON from response (handle markdown code blocks)
   const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, response];

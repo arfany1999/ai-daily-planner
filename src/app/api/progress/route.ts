@@ -269,5 +269,5 @@ export const GET = withAuth(async (req, userId) => {
     daily,
     weekly_trend,
     today_tasks,
-  });
+  }, { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=300' } });
 });

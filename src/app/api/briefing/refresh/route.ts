@@ -93,7 +93,7 @@ ${connectionResults.length > 0 ? `CUSTOM CONNECTIONS:\n${connectionResults.map((
 
 Today is ${new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} (${today}). Generate the briefing starting from tomorrow.`;
 
-    const response = await generateWithClaude(systemPrompt, dataMessage, { maxTokens: 4096 });
+    const response = await generateWithClaude(systemPrompt, dataMessage, { maxTokens: 4096, cacheSystem: true });
 
     const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, response];
     const jsonStr = jsonMatch[1]?.trim() || response.trim();

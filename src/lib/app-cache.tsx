@@ -14,6 +14,8 @@
  */
 
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
+import { idbGet, idbSet, IDB_KEYS } from '@/lib/idb';
 
 const TZ = 'Australia/Melbourne';
 
@@ -138,21 +140,88 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     lastFetched.current = {};
   }, []);
 
-  // Initial warm-up — fire all in parallel
+  // Hydrate from IndexedDB first (instant native-app feel), then warm up from server
   useEffect(() => {
-    const today = todayISO();
-    Promise.all([
-      loadSettings(),
-      loadHealth(),
-      loadBriefing(),
-      loadCalendar(),
-      loadPlan(today),
-    ]).finally(() => setReady(true));
+    let cancelled = false;
+    (async () => {
+      // Hydrate from local cache immediately
+      const [s, h, b, c, pMap, cMap] = await Promise.all([
+        idbGet<Settings>(IDB_KEYS.settings),
+        idbGet<Health>(IDB_KEYS.health),
+        idbGet<Briefing>(IDB_KEYS.briefing),
+        idbGet<CalEvent[]>(IDB_KEYS.calEvents),
+        idbGet<Record<string, Plan | null>>(IDB_KEYS.plans),
+        idbGet<Record<string, string[]>>(IDB_KEYS.completions),
+      ]);
+      if (cancelled) return;
+      if (s) setSettings(s);
+      if (h) setHealth(h);
+      if (b) setBriefing(b);
+      if (c) setCalEvents(c);
+      if (pMap) setPlans(pMap);
+      if (cMap) {
+        const asSets: Record<string, Set<string>> = {};
+        for (const k of Object.keys(cMap)) asSets[k] = new Set(cMap[k]);
+        setCompletions(asSets);
+      }
+      // With local data in place, we can render right away
+      setReady(true);
+
+      // Warm up from server — refreshes cache in the background
+      const today = todayISO();
+      await Promise.allSettled([loadSettings(), loadHealth(), loadBriefing(), loadCalendar(), loadPlan(today)]);
+    })();
 
     const onChange = () => { invalidateAll(); loadPlan(todayISO()); loadCalendar(); };
     window.addEventListener('cmd-data-changed', onChange);
-    return () => window.removeEventListener('cmd-data-changed', onChange);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('cmd-data-changed', onChange);
+    };
   }, [loadSettings, loadHealth, loadBriefing, loadCalendar, loadPlan, invalidateAll]);
+
+  // Persist each slice to IDB whenever it changes (fire-and-forget)
+  useEffect(() => { if (settings) idbSet(IDB_KEYS.settings, settings); }, [settings]);
+  useEffect(() => { if (health) idbSet(IDB_KEYS.health, health); }, [health]);
+  useEffect(() => { if (briefing) idbSet(IDB_KEYS.briefing, briefing); }, [briefing]);
+  useEffect(() => { if (calEvents.length) idbSet(IDB_KEYS.calEvents, calEvents); }, [calEvents]);
+  useEffect(() => { if (Object.keys(plans).length) idbSet(IDB_KEYS.plans, plans); }, [plans]);
+  useEffect(() => {
+    if (!Object.keys(completions).length) return;
+    const serialisable: Record<string, string[]> = {};
+    for (const k of Object.keys(completions)) serialisable[k] = Array.from(completions[k]);
+    idbSet(IDB_KEYS.completions, serialisable);
+  }, [completions]);
+
+  // Supabase Realtime on todos — when agent/cron writes a plan, the client
+  // picks it up with zero refetch. Subscription filters to current user's rows.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const session = await fetch('/api/auth/session').then(r => r.json()).catch(() => null);
+      const userId = session?.userId;
+      if (!userId || cancelled) return;
+
+      const channel = supabase
+        .channel(`todos-${userId}`)
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'todos', filter: `user_id=eq.${userId}` },
+          (payload) => {
+            const row = (payload.new || payload.old) as { date?: string; todo?: unknown } | undefined;
+            if (!row?.date) return;
+            const date = row.date;
+            setPlans(p => ({
+              ...p,
+              [date]: (payload.new as { todo?: unknown })?.todo as Plan | null ?? null,
+            }));
+            lastFetched.current[`plan:${date}`] = Date.now();
+          })
+        .subscribe();
+
+      return () => { void supabase.removeChannel(channel); };
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <Ctx.Provider value={{

@@ -42,14 +42,14 @@ export const GET = withAuth(async (_req, userId) => {
       data: { courses: [], assignments: [], announcements: [] },
       stale: true,
       cached_at: null,
-    });
+    }, { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=60' } });
   }
 
   return NextResponse.json({
     data: cached.data,
     stale,
     cached_at: fetchedAt || null,
-  });
+  }, { headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=600' } });
 });
 
 export const maxDuration = 10; // fast now — just reads from Supabase

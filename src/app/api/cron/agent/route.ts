@@ -53,7 +53,7 @@ async function runForUser(userId: string): Promise<{ summary: string; actions: u
       const response = await claude.messages.create({
         model: MODEL,
         max_tokens: 2000,
-        system: SYSTEM,
+        system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }] as unknown as string,
         tools: AGENT_TOOLS as unknown as Parameters<typeof claude.messages.create>[0]['tools'],
         messages: messages as unknown as Parameters<typeof claude.messages.create>[0]['messages'],
       });

@@ -74,7 +74,9 @@ export const POST = withAuth(async (req, userId) => {
       const response = await claude.messages.create({
         model: MODEL,
         max_tokens: 4096,
-        system: SYSTEM,
+        // Cache the large static system prompt — ~90% discount on cache hits
+        // within 5 min (every subsequent agent call by any user, same prompt).
+        system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }] as unknown as string,
         tools: AGENT_TOOLS as unknown as Parameters<typeof claude.messages.create>[0]['tools'],
         messages: messages as unknown as Parameters<typeof claude.messages.create>[0]['messages'],
       });

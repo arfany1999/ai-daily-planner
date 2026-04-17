@@ -64,9 +64,11 @@ export async function POST(req: Request) {
     : Infinity;
   const EIGHTEEN_HOURS = 18 * 60 * 60 * 1000;
 
+  // Default to brief context — ~30% the tokens; ask endpoints can opt into
+  // full context by passing { scope: 'full' } in the body.
   const contextText = preBuilt?.text && ageMs < EIGHTEEN_HOURS
     ? preBuilt.text
-    : await buildContextText(userId, todayDate);
+    : await buildContextText(userId, todayDate, 'brief');
 
   const systemPrompt = `${userContext}
 

@@ -41,10 +41,10 @@ export const GET = withAuth(async (_req, userId) => {
 
   if (needsWebhook) void registerGcalWatch(userId);
 
-  // ── 4. Respond immediately ────────────────────────────────────────────────
+  // ── 4. Respond immediately with SWR cache hint ────────────────────────────
   return NextResponse.json({
     events: (cached?.data as unknown[]) || [],
     stale,
     cached_at: fetchedAt || null,
-  });
+  }, { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=300' } });
 });

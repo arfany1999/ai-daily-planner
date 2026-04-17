@@ -294,7 +294,7 @@ ${todayTodo ? `TODAY'S PLAN (carry forward incomplete non-fixed tasks): ${JSON.s
 ${urgentDeadlines.length ? `⚠️ URGENT DEADLINES (≤5 days): ${JSON.stringify(urgentDeadlines.map((a: { name: string; due_at: string }) => ({ name: a.name, due_at: a.due_at })))}` : ''}
 ${daysSinceGym >= 3 ? `⚠️ GYM ALERT: No gym logged in ${daysSinceGym}+ days. Gym days setting: ${gymDays.join(', ')}.` : ''}`;
 
-  const response = await generateWithClaude(systemPrompt, dataMsg, { maxTokens: 4096 });
+  const response = await generateWithClaude(systemPrompt, dataMsg, { maxTokens: 4096, cacheSystem: true });
   const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, response];
   try {
     return JSON.parse(jsonMatch[1]?.trim() || response.trim());
@@ -333,7 +333,7 @@ ${canvas ? `CANVAS: ${JSON.stringify({ assignments: canvas.assignments?.slice(0,
 ${semester ? `SEMESTER: ${JSON.stringify(semester)}` : ''}
 Today: ${getTodayDate()}`;
 
-  const response = await generateWithClaude(systemPrompt, dataMsg, { maxTokens: 4096 });
+  const response = await generateWithClaude(systemPrompt, dataMsg, { maxTokens: 4096, cacheSystem: true });
   const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, response];
   try {
     return JSON.parse(jsonMatch[1]?.trim() || response.trim());

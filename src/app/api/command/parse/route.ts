@@ -77,6 +77,7 @@ Return JSON only.`;
     const raw = await generateWithClaude(SYSTEM, userMsg, {
       model: 'claude-haiku-4-5-20251001',
       maxTokens: 400,
+      cacheSystem: true,
     });
     const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
     const parsed = JSON.parse(cleaned);
