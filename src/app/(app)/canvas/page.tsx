@@ -253,13 +253,31 @@ export default function CanvasPage() {
   }
 
   // ── Build per-course data ──────────────────────────────────────────────────
-  const courses = data.courses;
+  // Canvas returns every enrolment (old + new). Filter to the "active subjects"
+  // the student is actually working on: courses with at least one upcoming
+  // assignment/quiz OR an announcement in the last 30 days.
+  const thirtyDaysAgo = Date.now() - 30 * 86400000;
+  const activeCourseSet = new Set<string>();
+  for (const a of data.assignments) {
+    if (a.due_at && daysUntil(a.due_at) >= -14) activeCourseSet.add(a.course_name);
+    if (!a.due_at && !a.has_submitted_submissions) activeCourseSet.add(a.course_name);
+  }
+  for (const q of data.quizzes || []) {
+    if (q.due_at && daysUntil(q.due_at) >= -14) activeCourseSet.add(q.course_name);
+  }
+  for (const ann of data.announcements) {
+    if (new Date(ann.posted_at).getTime() > thirtyDaysAgo) activeCourseSet.add(ann.course_name);
+  }
+  const allCourses = data.courses;
+  const courses = allCourses.filter(c => activeCourseSet.has(c.name));
+  // Fall back to all courses if filter emptied the set
+  const coursesToShow = courses.length > 0 ? courses : allCourses.slice(0, 6);
   const quizzes = data.quizzes || [];
   const events = data.events || [];
 
-  // Assign a color per course
+  // Assign a color per course (stable across all courses, not just visible ones)
   const courseColorMap: Record<string, string> = {};
-  courses.forEach((c, i) => { courseColorMap[c.name] = COURSE_COLORS[i % COURSE_COLORS.length]; });
+  coursesToShow.forEach((c, i) => { courseColorMap[c.name] = COURSE_COLORS[i % COURSE_COLORS.length]; });
 
   // Merge assignments + quizzes into a unified stream so nothing is missed
   // (quizzes often ARE assignments in Canvas but sometimes stand alone).
@@ -296,18 +314,17 @@ export default function CanvasPage() {
   const allUndated = allItems
     .filter(a => !a.due_at && !a.has_submitted_submissions);
 
-  // Tabs: "All" + one per course (course_code label, e.g. BIOL2468) + Announcements
+  // Main tabs: "All" + one per active subject (usually 4). News is a separate chip below.
   const tabs: { key: string; label: string; color?: string }[] = [
     { key: 'all', label: 'All' },
-    ...courses.map((c, i) => ({
+    ...coursesToShow.map((c, i) => ({
       key: c.name,
       label: (c.course_code || courseCode(c.name)).toUpperCase(),
       color: COURSE_COLORS[i % COURSE_COLORS.length],
     })),
-    { key: 'announcements', label: 'News' },
   ];
 
-  const activeCourse = activeTab !== 'all' && activeTab !== 'announcements' ? courses.find(c => c.name === activeTab) : null;
+  const activeCourse = activeTab !== 'all' && activeTab !== 'announcements' ? coursesToShow.find(c => c.name === activeTab) : null;
 
   const visiblePending = activeCourse ? allPending.filter(a => a.course_name === activeTab) : allPending;
   const visibleSubmitted = activeCourse ? allSubmitted.filter(a => a.course_name === activeTab) : allSubmitted;
@@ -374,27 +391,50 @@ export default function CanvasPage() {
         </div>
       </div>
 
-      {/* Course tabs */}
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, marginBottom: 16 }}>
+      {/* Main course tabs — big, prominent */}
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6, marginBottom: 10 }}>
         {tabs.map(t => {
           const isActive = activeTab === t.key;
           const color = t.color || T.teal;
           return (
-            <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
-              flexShrink: 0,
-              padding: '7px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: isActive ? color : 'var(--surface)',
-              color: isActive ? '#fff' : T.textMuted,
-              fontSize: 11, fontWeight: 700,
-              boxShadow: isActive ? `0 3px 12px ${color}30` : 'none',
-              transition: 'all 0.18s var(--ease-spring)',
-              transform: isActive ? 'scale(1.04)' : 'scale(1)',
-              letterSpacing: '-0.01em',
-            }}>
+            <button key={t.key} onClick={() => setActiveTab(t.key)}
+              className="title-display"
+              style={{
+                flexShrink: 0,
+                padding: '12px 18px',
+                borderRadius: 14,
+                border: '1px solid ' + (isActive ? color : 'var(--border)'),
+                cursor: 'pointer',
+                background: isActive ? color : 'var(--surface)',
+                color: isActive ? '#fff' : T.text,
+                fontSize: 14, fontWeight: 800,
+                boxShadow: isActive ? `0 6px 20px ${color}40` : 'none',
+                transition: 'all 0.18s var(--ease-spring)',
+                transform: isActive ? 'scale(1.04)' : 'scale(1)',
+                letterSpacing: '-0.02em',
+                minWidth: t.key === 'all' ? 60 : undefined,
+                textAlign: 'center',
+              }}
+            >
               {t.label}
             </button>
           );
         })}
+      </div>
+
+      {/* Secondary: News toggle chip */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <button onClick={() => setActiveTab(activeTab === 'announcements' ? 'all' : 'announcements')}
+          style={{
+            padding: '5px 12px', borderRadius: 8,
+            background: activeTab === 'announcements' ? 'var(--teal-glow)' : 'transparent',
+            border: '1px solid ' + (activeTab === 'announcements' ? 'var(--teal-brd)' : 'var(--border)'),
+            color: activeTab === 'announcements' ? T.teal : T.textMuted,
+            fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            letterSpacing: '0.02em',
+          }}>
+          📣 News · {data.announcements.length}
+        </button>
       </div>
 
       {/* Announcements tab */}
