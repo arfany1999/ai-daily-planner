@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { T, DOMAINS, inferDomainFromTitle, urgencyToDomain, melbSunTimes } from '@/lib/theme';
@@ -120,6 +120,8 @@ export default function HomePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [domainFilter, setDomainFilter] = useState<Record<string, boolean>>({});
   const [selectedDate, setSelectedDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: TZ }));
+  const [expandedList, setExpandedList] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     Promise.all([
@@ -257,6 +259,30 @@ export default function HomePage() {
   const skippedBlocks = allTasks.filter(b => isBlockPast(b) && !doneToday.has(b.id)).slice(0, 2);
   const todayDateStr = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
 
+  // Anchor index — current block, else first upcoming, else last past
+  const anchorIdx = (() => {
+    const now = merged.findIndex(isBlockNow);
+    if (now !== -1) return now;
+    const next = merged.findIndex(b => !isBlockPast(b));
+    if (next !== -1) return next;
+    return Math.max(0, merged.length - 1);
+  })();
+
+  // Count of hidden items above/below the visible window (5-item focus)
+  const pastCount = Math.max(0, anchorIdx - 2);
+  const futureCount = Math.max(0, merged.length - (anchorIdx + 3));
+
+  // Auto-scroll to anchor on first render + data refresh
+  useEffect(() => {
+    if (!listRef.current || merged.length === 0) return;
+    const el = listRef.current.querySelector(`[data-idx="${anchorIdx}"]`) as HTMLElement | null;
+    if (el) {
+      // scroll so anchor sits near the top of the scroll viewport
+      listRef.current.scrollTop = Math.max(0, el.offsetTop - 80);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchorIdx, merged.length, expandedList]);
+
   const topPriorities = todayPlan?.top_priorities?.slice(0, 3) || [];
   const nudges = todayPlan?.nudges?.slice(0, 3) || [];
 
@@ -330,14 +356,54 @@ export default function HomePage() {
             <div style={{ fontSize: 10.5, color: T.textFaint, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               Today
             </div>
-            <button onClick={refresh} disabled={refreshing}
-              style={{
-                fontSize: 11, padding: '3px 9px', borderRadius: 6,
-                background: 'transparent', border: '1px solid var(--border)',
-                color: refreshing ? T.textFaint : T.textMuted, cursor: refreshing ? 'wait' : 'pointer',
-              }}>{refreshing ? '…' : 'Refresh'}</button>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {merged.length > 5 && (
+                <button onClick={() => setExpandedList(v => !v)}
+                  style={{
+                    fontSize: 11, padding: '3px 9px', borderRadius: 6,
+                    background: expandedList ? 'var(--teal-glow)' : 'transparent',
+                    border: '1px solid ' + (expandedList ? 'var(--teal-brd)' : 'var(--border)'),
+                    color: expandedList ? T.teal : T.textMuted,
+                    cursor: 'pointer', fontWeight: 600,
+                  }}>{expandedList ? 'Focus' : `All (${merged.length})`}</button>
+              )}
+              <button onClick={refresh} disabled={refreshing}
+                style={{
+                  fontSize: 11, padding: '3px 9px', borderRadius: 6,
+                  background: 'transparent', border: '1px solid var(--border)',
+                  color: refreshing ? T.textFaint : T.textMuted, cursor: refreshing ? 'wait' : 'pointer',
+                }}>{refreshing ? '…' : 'Refresh'}</button>
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+          {/* Hidden-past indicator */}
+          {!expandedList && pastCount > 0 && (
+            <button onClick={() => setExpandedList(true)} style={{
+              width: '100%', padding: '6px 0', marginBottom: 6,
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              fontSize: 11, color: T.textFaint, fontWeight: 500,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+              <span style={{ height: 1, flex: 1, background: 'var(--border)', maxWidth: 60 }} />
+              ↑ {pastCount} earlier — tap to show
+              <span style={{ height: 1, flex: 1, background: 'var(--border)', maxWidth: 60 }} />
+            </button>
+          )}
+
+          <div
+            ref={listRef}
+            style={{
+              display: 'flex', flexDirection: 'column', gap: 8,
+              position: 'relative',
+              maxHeight: expandedList ? 'none' : 420,
+              overflowY: expandedList ? 'visible' : 'auto',
+              overflowX: 'hidden',
+              paddingBottom: expandedList ? 0 : 6,
+              // fade edges while collapsed
+              maskImage: expandedList ? 'none' : 'linear-gradient(180deg, black 0, black calc(100% - 24px), transparent 100%)',
+              WebkitMaskImage: expandedList ? 'none' : 'linear-gradient(180deg, black 0, black calc(100% - 24px), transparent 100%)',
+            }}
+          >
             {merged.length === 0 && (
               <div style={{
                 padding: '32px 16px', textAlign: 'center',
@@ -347,7 +413,7 @@ export default function HomePage() {
                 Nothing scheduled. Tap <span className="mono" style={{ background: 'var(--surface-hi)', padding: '1px 5px', borderRadius: 4 }}>⌘K</span> to add a block.
               </div>
             )}
-            {merged.map((b) => {
+            {merged.map((b, idx) => {
               const dom = DOMAINS.find(d => d.id === (b.domain || urgencyToDomain(b.urgency).id)) || DOMAINS[4];
               const now = isBlockNow(b);
               const past = isBlockPast(b);
@@ -356,6 +422,7 @@ export default function HomePage() {
               return (
                 <button
                   key={b.id}
+                  data-idx={idx}
                   onClick={() => isTaskBlock && toggleTask(b.id)}
                   disabled={!isTaskBlock}
                   style={{
@@ -424,6 +491,20 @@ export default function HomePage() {
               );
             })}
           </div>
+
+          {/* Hidden-future indicator */}
+          {!expandedList && futureCount > 0 && (
+            <button onClick={() => setExpandedList(true)} style={{
+              width: '100%', padding: '8px 0 2px',
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              fontSize: 11, color: T.textFaint, fontWeight: 500,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+              <span style={{ height: 1, flex: 1, background: 'var(--border)', maxWidth: 60 }} />
+              ↓ {futureCount} more later — tap to show
+              <span style={{ height: 1, flex: 1, background: 'var(--border)', maxWidth: 60 }} />
+            </button>
+          )}
         </div>
 
         {/* Nudges & warnings — desktop only; mobile already has coach + timeline */}
