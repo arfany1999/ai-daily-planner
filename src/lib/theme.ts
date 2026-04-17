@@ -189,5 +189,16 @@ export const BUILTIN_CARDS = [
 export const DEMO_WEEKLY = [
   { day: 'Tuesday, 15 Apr', tag: 'tomorrow', events: [{ t: '9:00 AM', title: 'BIOL2368 Lecture', tp: 'class' }, { t: '11:00 AM', title: 'ONPS2431 Tutorial', tp: 'class' }, { t: '2:00 PM', title: '[AI] Study: AT3', tp: 'ai' }, { t: '7:00 PM', title: 'Gym', tp: 'gym' }], email: 'Nahar: AT3 rubric updated', deadlines: ['AT3 BIOL2368 — 4 days'] },
 ];
-export const DEMO_TODO: unknown[] = [];
-export const DEMO_MATERIALS: unknown[] = [];
+export const DEMO_TODO = [
+  { time: '7:00', task: 'Review ONPS2431 Wk6', est: 30, buf: 15, urg: 'green', desc: 'DNA replication.' },
+  { time: '9:00', task: 'BIOL2368 Lecture', est: 90, buf: 0, urg: 'class', desc: 'Gram-negative bacteria.' },
+  { time: '11:00', task: 'ONPS2431 Tutorial', est: 60, buf: 0, urg: 'class' },
+  { time: '12:00', task: 'Lunch', est: 45, buf: 0, urg: 'break' },
+  { time: '1:00', task: 'AT3 BIOL2368', est: 90, buf: 30, urg: 'red', desc: 'Biochem ID section.', carried: true },
+  { time: '3:15', task: 'AT3 formatting', est: 30, buf: 30, urg: 'amber', desc: 'Refs & tables.' },
+  { time: '7:00', task: 'Gym', est: 120, buf: 0, urg: 'gym' },
+];
+export const DEMO_MATERIALS = [
+  { course: 'BIOL2368', code: 'BIO', weeks: [{ n: 3, title: 'Microscopy & Staining', notes: 'Gram staining differentiates bacteria by cell wall.', mcqs: [{ q: 'Which retains crystal violet in Gram+?', o: ['Outer membrane', 'Peptidoglycan', 'LPS', 'Teichoic acid'], a: 1 }], cards: [{ t: 'Peptidoglycan', d: 'NAG-NAM polymer; thicker in Gram+' }] }] },
+  { course: 'ONPS2431', code: 'MOL', weeks: [{ n: 5, title: 'Gene Expression', notes: 'RNA Pol II + TFs at TATA box.', mcqs: [{ q: 'Which polymerase transcribes mRNA?', o: ['Pol I', 'Pol II', 'Pol III', 'Primase'], a: 1 }], cards: [{ t: 'TATA box', d: 'Promoter; binds TBP' }] }] },
+];
