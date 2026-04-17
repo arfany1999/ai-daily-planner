@@ -191,6 +191,25 @@ export default function HomePage() {
   const sunriseStr = sunrise.toLocaleTimeString('en-AU', { timeZone: TZ, hour: 'numeric', minute: '2-digit', hour12: true });
   const sunsetStr = sunset.toLocaleTimeString('en-AU', { timeZone: TZ, hour: 'numeric', minute: '2-digit', hour12: true });
 
+  // Anchor index — current block, else first upcoming, else last past
+  const anchorIdx = useMemo(() => {
+    const now = merged.findIndex(isBlockNow);
+    if (now !== -1) return now;
+    const next = merged.findIndex(b => !isBlockPast(b));
+    if (next !== -1) return next;
+    return Math.max(0, merged.length - 1);
+  }, [merged]);
+
+  // Auto-scroll to anchor on first render + data refresh.
+  // MUST run on every render (Rules of Hooks) — keep above any conditional return.
+  useEffect(() => {
+    if (!listRef.current || merged.length === 0) return;
+    const el = listRef.current.querySelector(`[data-idx="${anchorIdx}"]`) as HTMLElement | null;
+    if (el) {
+      listRef.current.scrollTop = Math.max(0, el.offsetTop - 80);
+    }
+  }, [anchorIdx, merged.length, expandedList]);
+
   if (!ready) {
     return (
       <>
@@ -259,29 +278,9 @@ export default function HomePage() {
   const skippedBlocks = allTasks.filter(b => isBlockPast(b) && !doneToday.has(b.id)).slice(0, 2);
   const todayDateStr = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
 
-  // Anchor index — current block, else first upcoming, else last past
-  const anchorIdx = (() => {
-    const now = merged.findIndex(isBlockNow);
-    if (now !== -1) return now;
-    const next = merged.findIndex(b => !isBlockPast(b));
-    if (next !== -1) return next;
-    return Math.max(0, merged.length - 1);
-  })();
-
   // Count of hidden items above/below the visible window (5-item focus)
   const pastCount = Math.max(0, anchorIdx - 2);
   const futureCount = Math.max(0, merged.length - (anchorIdx + 3));
-
-  // Auto-scroll to anchor on first render + data refresh
-  useEffect(() => {
-    if (!listRef.current || merged.length === 0) return;
-    const el = listRef.current.querySelector(`[data-idx="${anchorIdx}"]`) as HTMLElement | null;
-    if (el) {
-      // scroll so anchor sits near the top of the scroll viewport
-      listRef.current.scrollTop = Math.max(0, el.offsetTop - 80);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anchorIdx, merged.length, expandedList]);
 
   const topPriorities = todayPlan?.top_priorities?.slice(0, 3) || [];
   const nudges = todayPlan?.nudges?.slice(0, 3) || [];
