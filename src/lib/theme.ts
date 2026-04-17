@@ -142,6 +142,19 @@ export function getDensity(): Density {
   try { return (localStorage.getItem('cmd-density') as Density) || 'comfortable'; } catch { return 'comfortable'; }
 }
 
+// Theme helpers — runtime write to <html data-theme>
+export type Theme = 'auto' | 'light' | 'dark';
+export function applyTheme(t: Theme) {
+  if (typeof document === 'undefined') return;
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem('cmd-theme', t); } catch {}
+}
+export function getTheme(): Theme {
+  if (typeof document === 'undefined') return 'auto';
+  try { return (localStorage.getItem('cmd-theme') as Theme) || 'auto'; } catch { return 'auto'; }
+}
+
 // Sunrise/sunset for Melbourne — pure-JS NOAA solar position (no API)
 export function melbSunTimes(date: Date = new Date()): { sunrise: Date; sunset: Date } {
   const lat = -37.8136;

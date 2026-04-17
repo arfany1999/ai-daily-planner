@@ -507,6 +507,37 @@ export default function CalendarPage() {
       {/* DayTicker (always visible) */}
       <DayTicker selected={selectedDate} onSelect={setSelectedDate} daysBefore={14} daysAfter={60} />
 
+      {/* Domain legend — color key for events */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+        padding: '8px 14px',
+        background: 'var(--glass)',
+        borderBottom: '1px solid var(--border)',
+        overflowX: 'auto',
+      }}>
+        <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textFaint, marginRight: 4, flexShrink: 0 }}>Legend</span>
+        {DOMAINS.map(d => (
+          <div key={d.id} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '3px 8px 3px 7px', borderRadius: 6,
+            background: d.color + '18', border: `1px solid ${d.color}35`,
+            flexShrink: 0,
+          }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: d.color }} />
+            <span style={{ fontSize: 10.5, fontWeight: 600, color: d.color, letterSpacing: '0.01em' }}>{d.label}</span>
+          </div>
+        ))}
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          padding: '3px 8px 3px 7px', borderRadius: 6,
+          background: 'rgba(229,96,76,0.15)', border: '1px solid rgba(229,96,76,0.40)',
+          flexShrink: 0,
+        }}>
+          <span style={{ width: 8, height: 8, borderRadius: 2, background: '#E5604C' }} />
+          <span style={{ fontSize: 10.5, fontWeight: 600, color: '#E5604C', letterSpacing: '0.01em' }}>Deadline</span>
+        </div>
+      </div>
+
       {/* Header: nav + title + view switcher */}
       <div style={{
         padding: '10px 14px',

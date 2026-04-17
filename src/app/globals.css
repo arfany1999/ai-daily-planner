@@ -94,6 +94,135 @@
   color-scheme: dark;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Light mode — warm Fantastical-inspired, not pure white
+   Activated via <html data-theme="light"> OR prefers-color-scheme when auto
+   ────────────────────────────────────────────────────────────────────────── */
+html[data-theme="light"] {
+  --bg: #FAF7F2;
+  --bg1: #FFFFFF;
+  --bg2: #F4F0E8;
+  --bg3: #EDE7DB;
+  --bg4: #E4DCCC;
+
+  --border: rgba(20, 14, 6, 0.09);
+  --border-strong: rgba(20, 14, 6, 0.16);
+  --border-soft: rgba(20, 14, 6, 0.04);
+
+  --text: #1A140D;
+  --text-soft: #4A4036;
+  --text-muted: #7A7063;
+  --text-faint: #A89E90;
+
+  --teal: #B06640;
+  --teal-dk: #8A4A2A;
+  --teal-lt: #D48060;
+  --teal-glow: rgba(176,102,64,0.10);
+  --teal-brd: rgba(176,102,64,0.30);
+
+  --orange: #C06A30;
+  --green: #3A8A50;
+  --blue: #3D5FB8;
+  --red: #C0442C;
+  --purple: #7A5FA8;
+  --yellow: #A88030;
+  --pink: #C4608C;
+  --cyan: #3D95AC;
+
+  --d-academia: #3D5FB8;
+  --d-dev:      #7A5FA8;
+  --d-finance:  #A88030;
+  --d-health:   #3A8A50;
+  --d-admin:    #C06A30;
+  --d-break:    #807868;
+
+  --glass:       rgba(255,255,255,0.80);
+  --glass-hi:    rgba(255,255,255,0.94);
+  --glass-brd:   rgba(20,14,6,0.09);
+  --surface:     rgba(20,14,6,0.03);
+  --surface-hi:  rgba(20,14,6,0.055);
+  --surface-hover: rgba(20,14,6,0.075);
+  --surface-active: rgba(20,14,6,0.10);
+  --surface-input: rgba(255,255,255,0.80);
+
+  --nav-bg: rgba(250,247,242,0.85);
+  --nav-bg-solid: #FAF7F2;
+  --subtle-border: rgba(20,14,6,0.08);
+
+  --shadow-sm: 0 1px 3px rgba(20,14,6,0.08);
+  --shadow-md: 0 6px 22px rgba(20,14,6,0.10);
+  --shadow-lg: 0 16px 48px rgba(20,14,6,0.14);
+  --shadow-glow: 0 0 24px rgba(176,102,64,0.20);
+
+  color-scheme: light;
+}
+
+/* Respect OS preference only when user hasn't set explicit theme */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) {
+    --bg: #FAF7F2;
+    --bg1: #FFFFFF;
+    --bg2: #F4F0E8;
+    --bg3: #EDE7DB;
+    --bg4: #E4DCCC;
+    --border: rgba(20, 14, 6, 0.09);
+    --border-strong: rgba(20, 14, 6, 0.16);
+    --border-soft: rgba(20, 14, 6, 0.04);
+    --text: #1A140D;
+    --text-soft: #4A4036;
+    --text-muted: #7A7063;
+    --text-faint: #A89E90;
+    --teal: #B06640;
+    --teal-dk: #8A4A2A;
+    --teal-lt: #D48060;
+    --teal-glow: rgba(176,102,64,0.10);
+    --teal-brd: rgba(176,102,64,0.30);
+    --orange: #C06A30;
+    --green: #3A8A50;
+    --blue: #3D5FB8;
+    --red: #C0442C;
+    --purple: #7A5FA8;
+    --yellow: #A88030;
+    --d-academia: #3D5FB8;
+    --d-dev:      #7A5FA8;
+    --d-finance:  #A88030;
+    --d-health:   #3A8A50;
+    --d-admin:    #C06A30;
+    --d-break:    #807868;
+    --glass:       rgba(255,255,255,0.80);
+    --glass-hi:    rgba(255,255,255,0.94);
+    --glass-brd:   rgba(20,14,6,0.09);
+    --surface:     rgba(20,14,6,0.03);
+    --surface-hi:  rgba(20,14,6,0.055);
+    --surface-hover: rgba(20,14,6,0.075);
+    --surface-input: rgba(255,255,255,0.80);
+    --nav-bg: rgba(250,247,242,0.85);
+    --nav-bg-solid: #FAF7F2;
+    --subtle-border: rgba(20,14,6,0.08);
+    --shadow-sm: 0 1px 3px rgba(20,14,6,0.08);
+    --shadow-md: 0 6px 22px rgba(20,14,6,0.10);
+    --shadow-lg: 0 16px 48px rgba(20,14,6,0.14);
+    color-scheme: light;
+  }
+}
+
+/* Light-mode ambient background — soft cream glow instead of OLED radial */
+html[data-theme="light"] #commander-bg,
+html:not([data-theme]) #commander-bg {
+  background:
+    radial-gradient(ellipse 50% 35% at 15% 0%, rgba(176,102,64,0.06), transparent 60%),
+    radial-gradient(ellipse 40% 30% at 85% 100%, rgba(61,95,184,0.04), transparent 60%),
+    linear-gradient(180deg, #FDFBF7 0%, #FAF7F2 100%);
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) #commander-bg {
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 0%, rgba(196,118,74,0.06), transparent 60%),
+      radial-gradient(ellipse 40% 30% at 80% 100%, rgba(110,139,232,0.04), transparent 60%),
+      linear-gradient(180deg, #050504 0%, #000000 100%);
+  }
+}
+
 /* Density tiers — attached to <html data-density="..."> */
 html[data-density="cozy"] {
   --density-gap: 10px;

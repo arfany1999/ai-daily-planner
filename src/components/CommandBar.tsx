@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { T, DOMAINS, Density, applyDensity, getDensity } from '@/lib/theme';
+import { T, DOMAINS, Density, applyDensity, getDensity, Theme, applyTheme, getTheme } from '@/lib/theme';
 
 type Mode = 'idle' | 'parsing' | 'ready' | 'executing' | 'error';
 
@@ -77,13 +77,15 @@ export default function CommandBar() {
   const [streamText, setStreamText] = useState('');
   const [recording, setRecording] = useState(false);
   const [density, setDensityState] = useState<Density>('comfortable');
+  const [theme, setThemeState] = useState<Theme>('auto');
   const inputRef = useRef<HTMLInputElement>(null);
   const recRef = useRef<SRInstance | null>(null);
   const parseCtrlRef = useRef<AbortController | null>(null);
 
-  // Restore density on mount
-  useEffect(() => { setDensityState(getDensity()); }, []);
+  // Restore density + theme on mount
+  useEffect(() => { setDensityState(getDensity()); setThemeState(getTheme()); }, []);
   useEffect(() => { applyDensity(density); }, [density]);
+  useEffect(() => { applyTheme(theme); }, [theme]);
 
   // Open/close handlers
   const openBar = useCallback(() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 40); }, []);
@@ -460,13 +462,33 @@ export default function CommandBar() {
           borderTop: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           background: 'var(--glass)',
+          gap: 10, flexWrap: 'wrap',
         }}>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <span className="mono" style={{ fontSize: 9.5, color: T.textFaint }}>
-              <span style={{ color: T.textMuted }}>↵</span> run · <span style={{ color: T.textMuted }}>⌘.</span> density ({density})
-            </span>
+          <span className="mono" style={{ fontSize: 9.5, color: T.textFaint }}>
+            <span style={{ color: T.textMuted }}>↵</span> run
+          </span>
+
+          {/* Theme switcher */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span className="mono" style={{ fontSize: 9, color: T.textFaint, marginRight: 4 }}>theme</span>
+            {(['auto','light','dark'] as Theme[]).map(t => (
+              <button key={t} onClick={() => setThemeState(t)}
+                title={t === 'auto' ? 'Follow system' : t === 'light' ? 'Light' : 'Dark'}
+                style={{
+                  padding: '3px 8px', borderRadius: 5,
+                  background: theme === t ? 'var(--teal-glow)' : 'transparent',
+                  border: '1px solid ' + (theme === t ? 'var(--teal-brd)' : 'var(--border)'),
+                  color: theme === t ? T.teal : T.textMuted,
+                  fontSize: 9, fontWeight: 600, cursor: 'pointer',
+                  textTransform: 'capitalize',
+                }}
+              >{t === 'auto' ? 'Auto' : t === 'light' ? '☀' : '☾'}</button>
+            ))}
           </div>
-          <div style={{ display: 'flex', gap: 4 }}>
+
+          {/* Density switcher */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span className="mono" style={{ fontSize: 9, color: T.textFaint, marginRight: 4 }}>density</span>
             {(['comfortable','cozy','compact'] as Density[]).map(d => (
               <button key={d} onClick={() => setDensityState(d)}
                 style={{
@@ -475,9 +497,8 @@ export default function CommandBar() {
                   border: '1px solid ' + (density === d ? 'var(--teal-brd)' : 'var(--border)'),
                   color: density === d ? T.teal : T.textMuted,
                   fontSize: 9, fontWeight: 600, cursor: 'pointer',
-                  textTransform: 'capitalize',
                 }}
-              >{d}</button>
+              >{d === 'comfortable' ? 'Cozy·' : d === 'cozy' ? 'Med' : 'Tight'}</button>
             ))}
           </div>
         </div>
