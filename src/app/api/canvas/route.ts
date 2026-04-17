@@ -16,7 +16,10 @@ import { withAuth } from '@/lib/api-handler';
 import { supabaseAdmin } from '@/lib/supabase';
 import { syncCanvasToCache, isCanvasCacheStale } from '@/lib/canvas-sync';
 
-export const GET = withAuth(async (_req, userId) => {
+export const GET = withAuth(async (req, userId) => {
+  const url = new URL(req.url);
+  const forceRefresh = url.searchParams.get('refresh') === '1';
+
   // ── Step 0: Is the user connected? ───────────────────────────────────────
   // `connected === false` tells the frontend to show the Connect prompt
   // instead of an empty "0 courses / 0 deadlines" state.
@@ -34,6 +37,26 @@ export const GET = withAuth(async (_req, userId) => {
       stale: false,
       cached_at: null,
     }, { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=60' } });
+  }
+
+  // Force refresh path — waits for the sync before responding, bypasses cache.
+  if (forceRefresh) {
+    try {
+      const fresh = await syncCanvasToCache(userId);
+      return NextResponse.json({
+        connected: true,
+        data: fresh || { courses: [], assignments: [], quizzes: [], announcements: [], events: [] },
+        stale: false,
+        cached_at: new Date().toISOString(),
+      }, { headers: { 'Cache-Control': 'no-store' } });
+    } catch (e) {
+      return NextResponse.json({
+        connected: true,
+        data: null,
+        stale: true,
+        error: e instanceof Error ? e.message : 'sync-failed',
+      }, { status: 500 });
+    }
   }
 
   // ── Step 1: Read from cache (instant) ────────────────────────────────────

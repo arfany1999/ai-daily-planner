@@ -147,14 +147,33 @@ export default function CanvasPage() {
   const [tokenError, setTokenError] = useState('');
 
   useEffect(() => {
-    fetch('/api/canvas')
-      .then((r) => r.json())
-      .then((d) => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/canvas', { cache: 'no-store' });
+        const d = await r.json();
+        if (cancelled) return;
         setConnected(d.connected !== false);
         if (d.data) { setData(d.data); setStale(d.stale || false); }
         setLoading(false);
-      })
-      .catch(() => { setConnected(false); setLoading(false); });
+
+        // If connected but cache is empty / shallow (missing quizzes/events from the
+        // old sync shape, or looks incomplete) — force a fresh sync once.
+        const looksEmpty = d.connected && d.data && (
+          !d.data.assignments?.length && !d.data.announcements?.length
+        );
+        const missingNewFields = d.connected && d.data && d.data.quizzes === undefined;
+        if (looksEmpty || missingNewFields) {
+          const r2 = await fetch('/api/canvas?refresh=1', { cache: 'no-store' });
+          const d2 = await r2.json();
+          if (cancelled) return;
+          if (d2.data) { setData(d2.data); setStale(false); }
+        }
+      } catch {
+        if (!cancelled) { setConnected(false); setLoading(false); }
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const saveToken = async () => {
@@ -318,9 +337,25 @@ export default function CanvasPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.5px' }}>Canvas</div>
-            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
-              {courses.length} courses · {allPending.length} pending · {allOverdue.length} overdue · {allUndated.length} undated · {allSubmitted.length} done
-              {stale && <span style={{ marginLeft: 8, color: T.yellow }}>cached</span>}
+            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>{courses.length} courses · {allPending.length} pending · {allOverdue.length} overdue · {allUndated.length} undated · {allSubmitted.length} done</span>
+              {stale && <span style={{ color: T.yellow }}>cached</span>}
+              <button
+                onClick={async () => {
+                  setStale(true);
+                  try {
+                    const r = await fetch('/api/canvas?refresh=1', { cache: 'no-store' });
+                    const d = await r.json();
+                    if (d.data) { setData(d.data); setStale(false); }
+                  } catch {}
+                }}
+                style={{
+                  fontSize: 10, padding: '2px 8px', borderRadius: 5,
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  color: T.textMuted, cursor: 'pointer', fontWeight: 600,
+                }}
+                title="Force full sync from Canvas"
+              >↻ Sync</button>
             </div>
           </div>
           {/* Urgency summary */}
