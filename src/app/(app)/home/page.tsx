@@ -337,10 +337,15 @@ export default function HomePage() {
                 color: refreshing ? T.textFaint : T.textMuted, cursor: refreshing ? 'wait' : 'pointer',
               }}>{refreshing ? '…' : 'Refresh'}</button>
           </div>
-          <div>
+          <div style={{
+            background: 'var(--surface)',
+            borderRadius: 14,
+            border: '1px solid var(--border)',
+            overflow: 'hidden',
+          }}>
             {merged.length === 0 && (
-              <div style={{ padding: '32px 16px', textAlign: 'center', color: T.textMuted, fontSize: 12.5, border: '1px dashed var(--border)', borderRadius: 12 }}>
-                Nothing scheduled. Tap <span className="mono" style={{ background: 'var(--surface)', padding: '1px 5px', borderRadius: 4 }}>⌘K</span> to add a block.
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: T.textMuted, fontSize: 12.5 }}>
+                Nothing scheduled. Tap <span className="mono" style={{ background: 'var(--surface-hi)', padding: '1px 5px', borderRadius: 4 }}>⌘K</span> to add a block.
               </div>
             )}
             {merged.map((b, i) => {
@@ -356,36 +361,39 @@ export default function HomePage() {
                   disabled={!isTaskBlock}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                    padding: '11px 2px',
+                    padding: '12px 14px',
                     borderBottom: i < merged.length - 1 ? '1px solid var(--border-soft)' : 'none',
-                    background: 'transparent', border: 'none',
+                    background: 'transparent', borderLeft: 'none', borderRight: 'none', borderTop: 'none',
                     cursor: isTaskBlock ? 'pointer' : 'default',
                     opacity: done ? 0.42 : past ? 0.58 : 1,
                     textAlign: 'left',
-                    transition: 'opacity 0.15s',
-                  }}>
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => { if (isTaskBlock) e.currentTarget.style.background = 'var(--surface-hover)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                >
                   <div className="mono" style={{
                     width: 58, fontSize: 11, color: now ? dom.color : T.textMuted,
-                    fontWeight: now ? 700 : 500, flexShrink: 0, lineHeight: 1.25,
+                    fontWeight: 700, flexShrink: 0, lineHeight: 1.25,
                   }}>
                     {fmt12(b.start_time).replace(/ (am|pm)/, '')}
-                    <span style={{ fontSize: 9, color: T.textFaint }}>{fmt12(b.start_time).match(/(am|pm)$/)?.[0] || ''}</span>
+                    <span style={{ fontSize: 9, color: T.textFaint, fontWeight: 500 }}>{fmt12(b.start_time).match(/(am|pm)$/)?.[0] || ''}</span>
                   </div>
                   <div style={{
-                    width: 8, height: 8, borderRadius: '50%',
+                    width: 9, height: 9, borderRadius: '50%',
                     background: done ? dom.color : 'transparent',
-                    border: `1.5px solid ${dom.color}`,
+                    border: `2px solid ${dom.color}`,
                     flexShrink: 0,
-                    boxShadow: now ? `0 0 0 4px ${dom.color}20` : 'none',
+                    boxShadow: now ? `0 0 0 4px ${dom.color}25` : 'none',
                     transition: 'all 0.2s',
                   }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                      fontSize: 13, fontWeight: now ? 700 : 500,
-                      color: now ? T.text : T.textSoft,
+                      fontSize: 13.5, fontWeight: 700,
+                      color: now ? T.text : past || done ? T.textSoft : T.text,
                       textDecoration: done ? 'line-through' : 'none',
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      lineHeight: 1.35,
+                      lineHeight: 1.35, letterSpacing: '-0.01em',
                     }}>{b.task_name}</div>
                   </div>
                 </button>
