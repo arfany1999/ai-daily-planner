@@ -1102,13 +1102,10 @@ export default function CalendarPage() {
       <div className="calendar-right-panel">
 
       {/* Header */}
-      <div style={{
-        padding: '8px 14px 0',
-        background: 'rgba(243,237,225,0.95)',
-        
-        WebkitBackdropFilter: 'blur(16px)',
+      <div className="glass" style={{
+        padding: '10px 14px 0',
         flexShrink: 0,
-        borderBottom: '1px solid rgba(0,0,0,0.07)',
+        borderBottom: '1px solid var(--border)',
       }}>
         {/* Nav row + view toggle in one line */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -1175,8 +1172,21 @@ export default function CalendarPage() {
         )}
       </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: T.bg }}>
+      {/* Content — fluid morph between views */}
+      <div
+        key={view}
+        className="anim-morph"
+        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: T.bg }}
+        onWheel={(e) => {
+          if (!e.ctrlKey && !e.metaKey) return;
+          e.preventDefault();
+          const order: ViewMode[] = ['day','week','month','year'];
+          const idx = order.indexOf(view);
+          if (idx === -1) return;
+          if (e.deltaY > 0 && idx < order.length - 1) setView(order[idx + 1]);
+          else if (e.deltaY < 0 && idx > 0) setView(order[idx - 1]);
+        }}
+      >
         {view === 'day' && <DayTimeline events={events} selectedDate={selectedDate} />}
         {view === 'week' && <WeekView events={events} weekStart={weekStart} onSelectDay={handleSelectDay} />}
         {view === 'month' && <MonthView events={events} baseDate={baseDate} selectedDate={selectedDate} onSelectDay={handleSelectDay} />}

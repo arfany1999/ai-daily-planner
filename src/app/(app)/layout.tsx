@@ -4,9 +4,9 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Nav from '@/components/Nav';
 import BottomNav from '@/components/BottomNav';
-import AiBar from '@/components/AiBar';
 import Sidebar from '@/components/Sidebar';
 import TrialBanner from '@/components/TrialBanner';
+import CommandBar from '@/components/CommandBar';
 
 let subCache: { data: Record<string, unknown>; ts: number } | null = null;
 const SUB_TTL = 5 * 60 * 1000; // cache for 5 minutes
@@ -90,8 +90,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex' }}>
+      <div id="commander-bg" />
       <Sidebar />
-      <div className="app-main-inner">
+      <div className="app-main-inner" style={{ position: 'relative', zIndex: 1 }}>
         <div className="top-nav-mobile-only">
           <Nav />
         </div>
@@ -104,7 +105,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </SubscriptionGuard>
         </Suspense>
 
-        <AiBar />
+        <CommandBar />
 
         <div className="bottom-nav-wrapper">
           <BottomNav />

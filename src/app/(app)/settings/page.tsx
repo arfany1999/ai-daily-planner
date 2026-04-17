@@ -522,6 +522,47 @@ export default function SettingsPage() {
         onUpdate={(updated) => updateSetting('domains', updated)}
       />
 
+      {/* Energy Profile — drives AI time-blocking */}
+      <div style={{
+        background: T.card, border: `1px solid ${T.border}`, borderRadius: 14,
+        padding: 18, marginBottom: 12,
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textMuted, marginBottom: 4 }}>
+          Energy Profile
+        </div>
+        <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 14, lineHeight: 1.5 }}>
+          AI uses this curve to match tasks to your peak hours. Deep work goes in your sharp hours; admin & gym in flatter zones.
+        </div>
+        {[
+          { id: 'morning',   label: 'Morning (6–11am)',   hint: 'Deep focus · study · coding' },
+          { id: 'midday',    label: 'Midday (11am–2pm)',  hint: 'Meetings · admin · email' },
+          { id: 'afternoon', label: 'Afternoon (2–6pm)',  hint: 'Second wind · reviews' },
+          { id: 'evening',   label: 'Evening (6–10pm)',   hint: 'Gym · creative · light tasks' },
+        ].map(slot => {
+          const current = (settings.energy_curve as Record<string, number> | undefined)?.[slot.id] ?? (slot.id === 'morning' ? 5 : slot.id === 'evening' ? 3 : slot.id === 'midday' ? 3 : 4);
+          return (
+            <div key={slot.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: `1px solid ${T.border}` }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text }}>{slot.label}</div>
+                <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2 }}>{slot.hint}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {[1,2,3,4,5].map(w => (
+                  <button key={w}
+                    onClick={() => updateSetting('energy_curve', { ...(settings.energy_curve as Record<string, number> || {}), [slot.id]: w })}
+                    style={{
+                      width: 22, height: 22, borderRadius: '50%', border: 'none', cursor: 'pointer',
+                      background: w <= current ? T.teal : 'rgba(255,255,255,0.06)',
+                      transition: 'all 0.15s',
+                    }} />
+                ))}
+                <span className="mono" style={{ fontSize: 10, color: T.textMuted, marginLeft: 6, alignSelf: 'center' }}>{current}/5</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {/* Agentic Mode */}
       <div style={{
         background: T.card, border: `1px solid ${T.border}`, borderRadius: 14,

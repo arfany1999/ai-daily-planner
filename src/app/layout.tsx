@@ -33,7 +33,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png" />
       </head>
       <body>
-        <div id="dispatch-bg" />
+        <div id="commander-bg" />
         <div style={{ position: 'relative', zIndex: 1 }}>
           <AuthProvider>{children}</AuthProvider>
           <ServiceWorkerRegistrar />
