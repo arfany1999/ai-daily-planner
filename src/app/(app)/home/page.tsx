@@ -419,20 +419,21 @@ export default function HomePage() {
               ref={listRef}
               onScroll={(e) => setWheelScroll((e.currentTarget as HTMLDivElement).scrollTop)}
               style={{
-                height: expandedList ? 'auto' : 360,
-                maxHeight: expandedList ? 'none' : 360,
+                height: expandedList ? 'auto' : 460,
+                maxHeight: expandedList ? 'none' : 460,
                 overflowY: expandedList ? 'visible' : 'auto',
                 overflowX: 'hidden',
                 position: 'relative',
-                perspective: expandedList ? 'none' : '900px',
+                perspective: expandedList ? 'none' : '1200px',
                 perspectiveOrigin: 'center',
                 scrollSnapType: expandedList ? 'none' : 'y mandatory',
                 WebkitOverflowScrolling: 'touch',
-                paddingTop: expandedList ? 0 : 140,
-                paddingBottom: expandedList ? 0 : 140,
-                // soft edge fade on collapsed wheel
-                maskImage: expandedList ? 'none' : 'linear-gradient(180deg, transparent 0, black 22%, black 78%, transparent 100%)',
-                WebkitMaskImage: expandedList ? 'none' : 'linear-gradient(180deg, transparent 0, black 22%, black 78%, transparent 100%)',
+                // 190 = (460 - 80) / 2; centers row 1 while allowing first/last to reach center
+                paddingTop: expandedList ? 0 : 190,
+                paddingBottom: expandedList ? 0 : 190,
+                // softer edge fade so the trio (past/now/future) stays crisp
+                maskImage: expandedList ? 'none' : 'linear-gradient(180deg, transparent 0, black 14%, black 86%, transparent 100%)',
+                WebkitMaskImage: expandedList ? 'none' : 'linear-gradient(180deg, transparent 0, black 14%, black 86%, transparent 100%)',
               }}
             >
               {merged.map((b, idx) => {
@@ -444,14 +445,15 @@ export default function HomePage() {
                 const isTaskBlock = isTask(b);
 
                 // Wheel transform: distance from container center
-                const ROW = 76;
-                const cardCenter = idx * ROW + ROW / 2 + (expandedList ? 0 : 140);
-                const viewCenter = wheelScroll + (expandedList ? 0 : 180);
+                const ROW = 80;
+                const cardCenter = idx * ROW + ROW / 2 + (expandedList ? 0 : 190);
+                const viewCenter = wheelScroll + (expandedList ? 0 : 230);
                 const dist = expandedList ? 0 : (cardCenter - viewCenter) / ROW;
+                // Much gentler curve: the trio (±1 row) stays almost flat, further rows curve away
                 const clamped = Math.max(-3, Math.min(3, dist));
-                const rotateX = expandedList ? 0 : clamped * -14;
-                const scale = expandedList ? 1 : Math.max(0.78, 1 - Math.abs(clamped) * 0.07);
-                const wheelOpacity = expandedList ? 1 : Math.max(0.3, 1 - Math.abs(clamped) * 0.28);
+                const rotateX = expandedList ? 0 : clamped * -7;
+                const scale = expandedList ? 1 : Math.max(0.85, 1 - Math.abs(clamped) * 0.035);
+                const wheelOpacity = expandedList ? 1 : Math.max(0.45, 1 - Math.abs(clamped) * 0.18);
                 const translateZ = expandedList ? 0 : -Math.abs(clamped) * 32;
                 const isCenter = Math.abs(clamped) < 0.5;
 
