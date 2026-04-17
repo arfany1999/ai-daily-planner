@@ -109,6 +109,7 @@ const COURSE_COLORS = ['#4a6ef5', '#039BE5', '#8E24AA', '#0B8043', '#E67C73', '#
 
 export default function CanvasPage() {
   const [data, setData] = useState<CanvasData | null>(null);
+  const [connected, setConnected] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [stale, setStale] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('all');
@@ -121,10 +122,11 @@ export default function CanvasPage() {
     fetch('/api/canvas')
       .then((r) => r.json())
       .then((d) => {
+        setConnected(d.connected !== false);
         if (d.data) { setData(d.data); setStale(d.stale || false); }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => { setConnected(false); setLoading(false); });
   }, []);
 
   const saveToken = async () => {
@@ -139,6 +141,7 @@ export default function CanvasPage() {
         setTokenInput('');
         const canvasRes = await fetch('/api/canvas');
         const canvasData = await canvasRes.json();
+        setConnected(true);
         if (canvasData.data) setData(canvasData.data);
       } else { setTokenError(d.error || 'Failed'); }
     } catch { setTokenError('Network error'); }
@@ -159,8 +162,20 @@ export default function CanvasPage() {
     );
   }
 
+  // ── Connected but cache still warming up (first sync after connect) ──────
+  if (connected === true && !data) {
+    return (
+      <div style={{ padding: '22px 18px' }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: T.text, marginBottom: 14 }}>Canvas</div>
+        <div style={{ padding: '24px 16px', textAlign: 'center', color: T.textMuted, fontSize: 13, border: '1px dashed var(--border)', borderRadius: 14 }}>
+          Syncing with RMIT Canvas… This usually takes a few seconds.
+        </div>
+      </div>
+    );
+  }
+
   // ── Not connected ──────────────────────────────────────────────────────────
-  if (!data) {
+  if (connected === false || !data) {
     return (
       <div style={{ padding: '22px 18px' }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: T.text, marginBottom: 4 }}>Canvas</div>

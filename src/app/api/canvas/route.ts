@@ -17,6 +17,25 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { syncCanvasToCache, isCanvasCacheStale } from '@/lib/canvas-sync';
 
 export const GET = withAuth(async (_req, userId) => {
+  // ── Step 0: Is the user connected? ───────────────────────────────────────
+  // `connected === false` tells the frontend to show the Connect prompt
+  // instead of an empty "0 courses / 0 deadlines" state.
+  const { data: userRow } = await supabaseAdmin
+    .from('users')
+    .select('canvas_token, canvas_connected')
+    .eq('id', userId)
+    .single();
+  const connected = Boolean(userRow?.canvas_token) || Boolean(userRow?.canvas_connected);
+
+  if (!connected) {
+    return NextResponse.json({
+      connected: false,
+      data: null,
+      stale: false,
+      cached_at: null,
+    }, { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=60' } });
+  }
+
   // ── Step 1: Read from cache (instant) ────────────────────────────────────
   const { data: cached } = await supabaseAdmin
     .from('canvas_cache')
@@ -34,11 +53,8 @@ export const GET = withAuth(async (_req, userId) => {
 
   // ── Step 3: Respond immediately from cache ────────────────────────────────
   if (!cached?.data) {
-    // First-ever load: trigger sync and return empty (frontend will retry)
-    if (stale) {
-      // syncCanvasToCache already fired above — frontend will pick it up via Realtime
-    }
     return NextResponse.json({
+      connected: true,
       data: { courses: [], assignments: [], announcements: [] },
       stale: true,
       cached_at: null,
@@ -46,6 +62,7 @@ export const GET = withAuth(async (_req, userId) => {
   }
 
   return NextResponse.json({
+    connected: true,
     data: cached.data,
     stale,
     cached_at: fetchedAt || null,
