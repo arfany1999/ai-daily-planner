@@ -111,8 +111,12 @@ export async function GET(req: Request) {
         steps.canvas = `error — ${e instanceof Error ? e.message : 'unknown'}`;
       }
 
-      // 4. Generate tomorrow's schedule (AI)
-      if (isAiAvailable()) {
+      // 4. Generate tomorrow's schedule (AI) — only if user opted in via agentic_mode
+      const { data: userSettings } = await supabaseAdmin
+        .from('user_settings').select('agentic_mode').eq('user_id', user.id).single();
+      const autoPlan = Boolean(userSettings?.agentic_mode);
+
+      if (isAiAvailable() && autoPlan) {
         try {
           const todo = await generateTomorrow(user.id);
           const tomorrow = getTomorrowDate();
@@ -123,8 +127,12 @@ export async function GET(req: Request) {
         } catch (e) {
           steps.tomorrow = `error — ${e instanceof Error ? e.message : 'unknown'}`;
         }
+      } else if (!autoPlan) {
+        steps.tomorrow = 'skipped — agentic_mode off';
+      }
 
-        // 5. Generate briefing
+      if (isAiAvailable()) {
+        // 5. Generate briefing — passive/informational; always runs
         try {
           const briefing = await generateBriefing(user.id);
           const today = getTodayDate();

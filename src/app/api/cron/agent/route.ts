@@ -116,11 +116,12 @@ export async function POST(req: Request) {
 
   const { data: users } = await supabaseAdmin
     .from('user_settings')
-    .select('user_id, agentic_mode, push_enabled');
+    .select('user_id, agentic_mode');
 
   const results: { userId: string; summary: string; actions: number }[] = [];
   for (const u of users || []) {
-    if (!u.agentic_mode && !u.push_enabled) continue;
+    // Only run autonomous actions for users who explicitly enabled agentic mode.
+    if (!u.agentic_mode) continue;
     const r = await runForUser(u.user_id);
     results.push({ userId: u.user_id, summary: r.summary, actions: r.actions.length });
   }

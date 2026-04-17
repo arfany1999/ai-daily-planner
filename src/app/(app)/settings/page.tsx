@@ -563,34 +563,34 @@ export default function SettingsPage() {
         })}
       </div>
 
-      {/* Agentic Mode */}
+      {/* Auto-planning */}
       <div style={{
-        background: T.card, border: `1px solid ${T.border}`, borderRadius: 14,
-        padding: 18, marginBottom: 12,
+        background: T.card,
+        border: `1px solid ${settings.agentic_mode ? T.teal + '40' : T.border}`,
+        borderRadius: 14, padding: 18, marginBottom: 12,
       }}>
         <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textMuted, marginBottom: 12 }}>
-          AI Mode
+          Auto-Planning
         </div>
         <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '8px 0', borderBottom: `1px solid ${T.border}`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+          padding: '8px 0',
         }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Agentic Auto-Mode</div>
-            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2, lineHeight: 1.5 }}>
-              AI auto-creates study blocks, reschedules on conflicts, and flags urgent deadlines without asking
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: T.text, marginBottom: 4 }}>
+              {settings.agentic_mode ? '⚡ Auto-plan: ON' : '🔒 Auto-plan: OFF'}
+            </div>
+            <div style={{ fontSize: 11.5, color: T.textSoft, lineHeight: 1.55 }}>
+              {settings.agentic_mode
+                ? 'The AI builds tomorrow\'s schedule overnight, auto-creates study blocks for new deadlines, and resolves small conflicts on its own. You\'ll still get a push for big decisions.'
+                : 'The AI stays passive. It only acts when you command it in ⌘K, or when you add blocks yourself (to Google Calendar or via the planner). No overnight plan, no autonomous actions, no background nudges.'}
             </div>
           </div>
           <Toggle
             on={Boolean(settings.agentic_mode)}
             onChange={() => updateSetting('agentic_mode', !settings.agentic_mode)}
-            color={T.blue}
+            color={T.teal}
           />
-        </div>
-        <div style={{ fontSize: 10, color: T.textMuted, marginTop: 8, lineHeight: 1.6 }}>
-          {settings.agentic_mode
-            ? '⚡ Auto mode: AI executes safe actions automatically. Sensitive actions (deleting events, rescheduling fixed appointments) still ask first.'
-            : '💬 Suggest mode: AI proposes changes and you approve each one before anything happens.'}
         </div>
       </div>
 
