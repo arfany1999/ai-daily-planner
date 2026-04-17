@@ -278,9 +278,12 @@ export default function HomePage() {
   const skippedBlocks = allTasks.filter(b => isBlockPast(b) && !doneToday.has(b.id)).slice(0, 2);
   const todayDateStr = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
 
-  // Count of hidden items above/below the visible window (5-item focus)
-  const pastCount = Math.max(0, anchorIdx - 2);
-  const futureCount = Math.max(0, merged.length - (anchorIdx + 3));
+  // 5-item focus window around the anchor (2 before + anchor + 2 after)
+  const windowStart = Math.max(0, Math.min(anchorIdx - 2, Math.max(0, merged.length - 5)));
+  const windowEnd = Math.min(merged.length, windowStart + 5);
+  const pastCount = windowStart;
+  const futureCount = Math.max(0, merged.length - windowEnd);
+  const visibleMerged = expandedList ? merged : merged.slice(windowStart, windowEnd);
 
   const topPriorities = todayPlan?.top_priorities?.slice(0, 3) || [];
   const nudges = todayPlan?.nudges?.slice(0, 3) || [];
@@ -394,13 +397,23 @@ export default function HomePage() {
             style={{
               display: 'flex', flexDirection: 'column', gap: 8,
               position: 'relative',
-              maxHeight: expandedList ? 'none' : 420,
-              overflowY: expandedList ? 'visible' : 'auto',
-              overflowX: 'hidden',
-              paddingBottom: expandedList ? 0 : 6,
-              // fade edges while collapsed
-              maskImage: expandedList ? 'none' : 'linear-gradient(180deg, black 0, black calc(100% - 24px), transparent 100%)',
-              WebkitMaskImage: expandedList ? 'none' : 'linear-gradient(180deg, black 0, black calc(100% - 24px), transparent 100%)',
+              maxHeight: expandedList ? 'none' : undefined,
+              overflowY: expandedList ? 'visible' : 'visible',
+              // fade edges while collapsed — soft hint of hidden items
+              maskImage: expandedList ? 'none' : (pastCount > 0 && futureCount > 0)
+                ? 'linear-gradient(180deg, transparent 0, black 18px, black calc(100% - 18px), transparent 100%)'
+                : pastCount > 0
+                  ? 'linear-gradient(180deg, transparent 0, black 18px, black 100%)'
+                  : futureCount > 0
+                    ? 'linear-gradient(180deg, black 0, black calc(100% - 18px), transparent 100%)'
+                    : 'none',
+              WebkitMaskImage: expandedList ? 'none' : (pastCount > 0 && futureCount > 0)
+                ? 'linear-gradient(180deg, transparent 0, black 18px, black calc(100% - 18px), transparent 100%)'
+                : pastCount > 0
+                  ? 'linear-gradient(180deg, transparent 0, black 18px, black 100%)'
+                  : futureCount > 0
+                    ? 'linear-gradient(180deg, black 0, black calc(100% - 18px), transparent 100%)'
+                    : 'none',
             }}
           >
             {merged.length === 0 && (
@@ -412,7 +425,8 @@ export default function HomePage() {
                 Nothing scheduled. Tap <span className="mono" style={{ background: 'var(--surface-hi)', padding: '1px 5px', borderRadius: 4 }}>⌘K</span> to add a block.
               </div>
             )}
-            {merged.map((b, idx) => {
+            {visibleMerged.map((b, localIdx) => {
+              const idx = expandedList ? localIdx : windowStart + localIdx;
               const dom = DOMAINS.find(d => d.id === (b.domain || urgencyToDomain(b.urgency).id)) || DOMAINS[4];
               const now = isBlockNow(b);
               const past = isBlockPast(b);
