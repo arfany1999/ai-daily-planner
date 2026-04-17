@@ -2,11 +2,16 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import Nav from '@/components/Nav';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import TrialBanner from '@/components/TrialBanner';
-import CommandBar from '@/components/CommandBar';
+import { AppDataProvider } from '@/lib/app-cache';
+
+// Defer CommandBar — it's only needed after first paint / when the user hits ⌘K
+// This shaves ~80KB off the critical bundle for the home view.
+const CommandBar = dynamic(() => import('@/components/CommandBar'), { ssr: false });
 
 let subCache: { data: Record<string, unknown>; ts: number } | null = null;
 const SUB_TTL = 5 * 60 * 1000; // cache for 5 minutes
@@ -89,28 +94,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // App is always dark (Dispatch aesthetic) — no toggle needed
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex' }}>
-      <div id="commander-bg" />
-      <Sidebar />
-      <div className="app-main-inner" style={{ position: 'relative', zIndex: 1 }}>
-        <div className="top-nav-mobile-only">
-          <Nav />
-        </div>
+    <AppDataProvider>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex' }}>
+        <div id="commander-bg" />
+        <Sidebar />
+        <div className="app-main-inner" style={{ position: 'relative', zIndex: 1 }}>
+          <div className="top-nav-mobile-only">
+            <Nav />
+          </div>
 
-        <Suspense fallback={null}>
-          <SubscriptionGuard>
-            <main className="app-main-content" style={{ paddingBottom: 120 }}>
-              {children}
-            </main>
-          </SubscriptionGuard>
-        </Suspense>
+          <Suspense fallback={null}>
+            <SubscriptionGuard>
+              <main className="app-main-content" style={{ paddingBottom: 120 }}>
+                {children}
+              </main>
+            </SubscriptionGuard>
+          </Suspense>
 
-        <CommandBar />
+          <CommandBar />
 
-        <div className="bottom-nav-wrapper">
-          <BottomNav />
+          <div className="bottom-nav-wrapper">
+            <BottomNav />
+          </div>
         </div>
       </div>
-    </div>
+    </AppDataProvider>
   );
 }

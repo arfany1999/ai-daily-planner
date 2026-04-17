@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { T, DOMAINS, inferDomainFromTitle, urgencyToDomain, melbSunTimes } from '@/lib/theme';
 import DayTicker from '@/components/DayTicker';
 import SkippedBlockCard from '@/components/SkippedBlockCard';
+import { useAppData, usePlan } from '@/lib/app-cache';
 
 const TZ = 'Australia/Melbourne';
 
@@ -120,90 +121,66 @@ function DomainChip({ domainId, size = 'sm' }: { domainId: string; size?: 'sm' |
 export default function HomePage() {
   const { data: session } = useSession();
   const router = useRouter();
-  const [ready, setReady] = useState(false);
-  const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
-  const [todayPlan, setTodayPlan] = useState<TodayPlan | null>(null);
-  const [briefing, setBriefing] = useState<Briefing | null>(null);
-  const [calEvents, setCalEvents] = useState<CalEvent[]>([]);
-  const [doneToday, setDoneToday] = useState<Set<string>>(new Set());
-  const [refreshing, setRefreshing] = useState(false);
+  const app = useAppData();
   const [domainFilter, setDomainFilter] = useState<Record<string, boolean>>({});
   const [selectedDate, setSelectedDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: TZ }));
   const [expandedList, setExpandedList] = useState(false);
   const [wheelScroll, setWheelScroll] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // One-time: settings check, briefing, domain filter subscription
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/settings').then((r) => r.json()).catch(() => ({})),
-      fetch('/api/briefing').then((r) => r.json()).catch(() => ({})),
-      fetch('/api/health').then((r) => r.json()).catch(() => ({ checks: {} })),
-    ]).then(([settings, briefD, healthD]) => {
-      if (settings.setup_complete === false) { router.push('/setup'); return; }
-      if (briefD.briefing) setBriefing(briefD.briefing as Briefing);
-      setGoogleConnected((healthD?.checks?.google?.status === 'ok'));
-      setReady(true);
-    }).catch(() => setReady(true));
+  // Pull from shared cache — no per-mount fetches
+  const { plan: dayPlan, done: doneToday } = usePlan(selectedDate);
+  const todayPlan: TodayPlan | null = dayPlan as unknown as TodayPlan | null;
+  const briefing: Briefing | null = app.briefing as unknown as Briefing | null;
+  const googleConnected: boolean | null = app.health
+    ? app.health.checks?.google?.status === 'ok'
+    : null;
+  const ready = app.ready;
 
+  // Redirect incomplete setup
+  useEffect(() => {
+    if (app.settings?.setup_complete === false) router.push('/setup');
+  }, [app.settings, router]);
+
+  // Filter calendar events to the selected day (from cached all-events list)
+  const calEvents = useMemo(() => {
+    return (app.calEvents || [])
+      .filter(e => e.start.startsWith(selectedDate))
+      .sort((a, b) => a.start.localeCompare(b.start));
+  }, [app.calEvents, selectedDate]);
+
+  // Domain filter localStorage subscription
+  useEffect(() => {
     try { setDomainFilter(JSON.parse(localStorage.getItem('cmd-domains') || '{}')); } catch {}
     const h = (e: CustomEvent) => setDomainFilter(e.detail as Record<string, boolean>);
     window.addEventListener('cmd-domains-changed', h as EventListener);
-    const r = () => window.location.reload();
-    window.addEventListener('cmd-data-changed', r);
-    return () => {
-      window.removeEventListener('cmd-domains-changed', h as EventListener);
-      window.removeEventListener('cmd-data-changed', r);
-    };
-  }, [router]);
-
-  // Date-aware: reload plan + completions + calendar events for the selectedDate
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      fetch(`/api/today?date=${selectedDate}`).then((r) => r.json()).catch(() => ({})),
-      fetch('/api/calendar').then((r) => r.json()).catch(() => ({})),
-      fetch(`/api/progress?date=${selectedDate}`).then((r) => r.json()).catch(() => ({})),
-    ]).then(([todayD, calD, progressD]) => {
-      if (cancelled) return;
-      setTodayPlan((todayD?.plan as TodayPlan | null) || null);
-      // Filter calendar events to only those on the selected date
-      const evs = (calD?.events as CalEvent[] | undefined) || [];
-      const onDay = evs.filter(e => e.start.startsWith(selectedDate)).sort((a, b) => a.start.localeCompare(b.start));
-      setCalEvents(onDay);
-      // Completions for the selected date
-      const ids = ((progressD?.today_tasks as { id: string; completed: boolean }[] | undefined) || [])
-        .filter(t => t.completed).map(t => t.id);
-      // progress endpoint may return completions for *today* regardless of param; fall back to todayD.completed_ids
-      const completedIds = (todayD?.completed_ids as string[] | undefined) || ids;
-      setDoneToday(new Set(completedIds));
-    });
-    return () => { cancelled = true; };
-  }, [selectedDate]);
+    return () => window.removeEventListener('cmd-domains-changed', h as EventListener);
+  }, []);
 
   const refresh = async () => {
     setRefreshing(true);
     try {
-      const r = await fetch('/api/today/refresh', { method: 'POST' });
-      const d = await r.json();
-      if (d.plan) setTodayPlan(d.plan as TodayPlan);
+      await fetch('/api/today/refresh', { method: 'POST' });
+      await app.refreshPlan(selectedDate);
     } catch {}
     setRefreshing(false);
   };
 
   const toggleTask = async (taskId: string) => {
     const todayDate = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
-    if (doneToday.has(taskId)) {
-      setDoneToday(prev => { const n = new Set(prev); n.delete(taskId); return n; });
+    const wasDone = doneToday.has(taskId);
+    // Optimistic flip — the cache will be revalidated after the write
+    if (wasDone) {
       await fetch('/api/tasks/uncomplete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task_id: taskId, date: todayDate }) });
     } else {
-      setDoneToday(prev => new Set([...prev, taskId]));
       await fetch('/api/tasks/complete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task_id: taskId, date: todayDate }) });
     }
+    app.refreshPlan(todayDate);
   };
 
   const mergedRaw = useMemo(() =>
-    todayPlan?.timeline ? mergeTimeline(todayPlan.timeline, calEvents) : calEvents.map(calToBlock)
+    todayPlan?.timeline ? mergeTimeline(todayPlan.timeline as unknown as TimelineBlock[], calEvents) : calEvents.map(calToBlock)
   , [todayPlan, calEvents]);
 
   const merged = useMemo(() => mergedRaw.filter(b => {
