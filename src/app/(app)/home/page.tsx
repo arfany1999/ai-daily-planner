@@ -45,14 +45,22 @@ function melbHourNow() {
 function hmToMins(hm: string) {
   const [h, m] = hm.split(':').map(Number); return (h || 0) * 60 + (m || 0);
 }
-function isBlockNow(b: TimelineBlock) {
-  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
-  return nowMins >= hmToMins(b.start_time) && nowMins < hmToMins(b.end_time);
+function todayISO() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: TZ });
 }
-function isBlockPast(b: TimelineBlock) {
+type BlockState = 'past' | 'now' | 'future';
+function getBlockState(b: TimelineBlock, viewDate: string): BlockState {
+  const today = todayISO();
+  if (viewDate < today) return 'past';
+  if (viewDate > today) return 'future';
+  // Same day — compare times
   const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
-  return nowMins >= hmToMins(b.end_time);
+  if (nowMins >= hmToMins(b.end_time)) return 'past';
+  if (nowMins >= hmToMins(b.start_time)) return 'now';
+  return 'future';
 }
+function isBlockNow(b: TimelineBlock, viewDate: string) { return getBlockState(b, viewDate) === 'now'; }
+function isBlockPast(b: TimelineBlock, viewDate: string) { return getBlockState(b, viewDate) === 'past'; }
 
 function calToBlock(ev: CalEvent): TimelineBlock & { _fromCal?: boolean } {
   const fmtHM = (iso: string) => {
@@ -124,25 +132,13 @@ export default function HomePage() {
   const [wheelScroll, setWheelScroll] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // One-time: settings check, briefing, domain filter subscription
   useEffect(() => {
     Promise.all([
       fetch('/api/settings').then((r) => r.json()).catch(() => ({})),
-      fetch('/api/today').then((r) => r.json()).catch(() => ({})),
-      fetch('/api/progress').then((r) => r.json()).catch(() => ({})),
-      fetch('/api/calendar').then((r) => r.json()).catch(() => ({})),
       fetch('/api/briefing').then((r) => r.json()).catch(() => ({})),
-    ]).then(([settings, todayD, progressD, calD, briefD]) => {
+    ]).then(([settings, briefD]) => {
       if (settings.setup_complete === false) { router.push('/setup'); return; }
-      if (todayD.plan) setTodayPlan(todayD.plan as TodayPlan);
-      if (progressD.today_tasks) {
-        const ids = progressD.today_tasks.filter((t: { completed: boolean }) => t.completed).map((t: { id: string }) => t.id);
-        setDoneToday(new Set(ids));
-      }
-      if (calD.events) {
-        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
-        const todayEvs = (calD.events as CalEvent[]).filter(e => e.start.startsWith(todayStr)).sort((a, b) => a.start.localeCompare(b.start));
-        setCalEvents(todayEvs);
-      }
       if (briefD.briefing) setBriefing(briefD.briefing as Briefing);
       setReady(true);
     }).catch(() => setReady(true));
@@ -157,6 +153,30 @@ export default function HomePage() {
       window.removeEventListener('cmd-data-changed', r);
     };
   }, [router]);
+
+  // Date-aware: reload plan + completions + calendar events for the selectedDate
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch(`/api/today?date=${selectedDate}`).then((r) => r.json()).catch(() => ({})),
+      fetch('/api/calendar').then((r) => r.json()).catch(() => ({})),
+      fetch(`/api/progress?date=${selectedDate}`).then((r) => r.json()).catch(() => ({})),
+    ]).then(([todayD, calD, progressD]) => {
+      if (cancelled) return;
+      setTodayPlan((todayD?.plan as TodayPlan | null) || null);
+      // Filter calendar events to only those on the selected date
+      const evs = (calD?.events as CalEvent[] | undefined) || [];
+      const onDay = evs.filter(e => e.start.startsWith(selectedDate)).sort((a, b) => a.start.localeCompare(b.start));
+      setCalEvents(onDay);
+      // Completions for the selected date
+      const ids = ((progressD?.today_tasks as { id: string; completed: boolean }[] | undefined) || [])
+        .filter(t => t.completed).map(t => t.id);
+      // progress endpoint may return completions for *today* regardless of param; fall back to todayD.completed_ids
+      const completedIds = (todayD?.completed_ids as string[] | undefined) || ids;
+      setDoneToday(new Set(completedIds));
+    });
+    return () => { cancelled = true; };
+  }, [selectedDate]);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -194,12 +214,12 @@ export default function HomePage() {
 
   // Anchor index — current block, else first upcoming, else last past
   const anchorIdx = useMemo(() => {
-    const now = merged.findIndex(isBlockNow);
+    const now = merged.findIndex(b => isBlockNow(b, selectedDate));
     if (now !== -1) return now;
-    const next = merged.findIndex(b => !isBlockPast(b));
+    const next = merged.findIndex(b => !isBlockPast(b, selectedDate));
     if (next !== -1) return next;
     return Math.max(0, merged.length - 1);
-  }, [merged]);
+  }, [merged, selectedDate]);
 
   // Auto-scroll wheel to anchor (current or next block) on first render + data refresh.
   // MUST run on every render (Rules of Hooks) — keep above any conditional return.
@@ -275,11 +295,11 @@ export default function HomePage() {
   const allTasks = merged.filter(isTask);
   const pendingTasks = allTasks.filter(t => !doneToday.has(t.id));
   const doneCount = doneToday.size;
-  const nowBlock = merged.find(isBlockNow);
-  const nextBlock = merged.find(b => !isBlockPast(b) && !isBlockNow(b));
+  const nowBlock = merged.find(b => isBlockNow(b, selectedDate));
+  const nextBlock = merged.find(b => !isBlockPast(b, selectedDate) && !isBlockNow(b, selectedDate));
 
   // Study-coach: past-ended task blocks not marked complete → show skip card (max 2)
-  const skippedBlocks = allTasks.filter(b => isBlockPast(b) && !doneToday.has(b.id)).slice(0, 2);
+  const skippedBlocks = allTasks.filter(b => isBlockPast(b, selectedDate) && !doneToday.has(b.id)).slice(0, 2);
   const todayDateStr = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
 
   // 5-item focus window around the anchor (2 before + anchor + 2 after)
@@ -305,14 +325,18 @@ export default function HomePage() {
           <h1 className="title-display" style={{
             fontSize: 26, fontWeight: 700, color: T.text, letterSpacing: '-0.03em', lineHeight: 1.15, marginTop: 4,
           }}>
-            {nowBlock ? nowBlock.task_name.slice(0, 50) :
-             nextBlock ? `Next · ${nextBlock.task_name.slice(0, 40)}` :
-             pendingTasks.length === 0 ? 'Nothing left today.' : "Today's plan"}
+            {selectedDate !== todayDateStr
+              ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric' })
+              : nowBlock ? nowBlock.task_name.slice(0, 50)
+              : nextBlock ? `Next · ${nextBlock.task_name.slice(0, 40)}`
+              : pendingTasks.length === 0 ? 'Nothing left today.'
+              : "Today's plan"}
           </h1>
           <div className="mono" style={{ fontSize: 11, color: T.textFaint, marginTop: 6, letterSpacing: '0.02em' }}>
             {doneCount}/{allTasks.length} done
-            {nowBlock && ` · ${fmt12(nowBlock.start_time)}–${fmt12(nowBlock.end_time)}`}
-            {!nowBlock && nextBlock && ` · at ${fmt12(nextBlock.start_time)}`}
+            {selectedDate === todayDateStr && nowBlock && ` · ${fmt12(nowBlock.start_time)}–${fmt12(nowBlock.end_time)}`}
+            {selectedDate === todayDateStr && !nowBlock && nextBlock && ` · at ${fmt12(nextBlock.start_time)}`}
+            {selectedDate !== todayDateStr && ` · ${selectedDate < todayDateStr ? 'past' : 'upcoming'}`}
             <span className="hide-mobile"> · ↑{sunriseStr} ↓{sunsetStr}</span>
           </div>
         </div>
@@ -413,22 +437,46 @@ export default function HomePage() {
             >
               {merged.map((b, idx) => {
                 const dom = DOMAINS.find(d => d.id === (b.domain || urgencyToDomain(b.urgency).id)) || DOMAINS[4];
-                const now = isBlockNow(b);
-                const past = isBlockPast(b);
+                const state = getBlockState(b, selectedDate);
+                const now = state === 'now';
+                const past = state === 'past';
                 const done = doneToday.has(b.id);
                 const isTaskBlock = isTask(b);
 
                 // Wheel transform: distance from container center
-                const ROW = 76; // card height + gap
+                const ROW = 76;
                 const cardCenter = idx * ROW + ROW / 2 + (expandedList ? 0 : 140);
                 const viewCenter = wheelScroll + (expandedList ? 0 : 180);
                 const dist = expandedList ? 0 : (cardCenter - viewCenter) / ROW;
                 const clamped = Math.max(-3, Math.min(3, dist));
                 const rotateX = expandedList ? 0 : clamped * -14;
                 const scale = expandedList ? 1 : Math.max(0.78, 1 - Math.abs(clamped) * 0.07);
-                const opacity = expandedList ? 1 : Math.max(0.3, 1 - Math.abs(clamped) * 0.28);
+                const wheelOpacity = expandedList ? 1 : Math.max(0.3, 1 - Math.abs(clamped) * 0.28);
                 const translateZ = expandedList ? 0 : -Math.abs(clamped) * 32;
                 const isCenter = Math.abs(clamped) < 0.5;
+
+                // State-based styling (stronger differentiation)
+                const stateBg = now
+                  ? `linear-gradient(135deg, ${dom.color}22, ${dom.color}10)`
+                  : past
+                    ? 'transparent'
+                    : 'var(--surface)';
+                const stateBorder = now
+                  ? `${dom.color}80`
+                  : past
+                    ? 'var(--border-soft)'
+                    : 'var(--border)';
+                const stateTitleColor = now
+                  ? T.text
+                  : past
+                    ? T.textMuted
+                    : T.text;
+                const stateOpacity = done
+                  ? 0.38
+                  : past
+                    ? 0.58
+                    : 1;
+                const stateFilter = past && !done ? 'saturate(0.55)' : 'none';
 
                 return (
                   <button
@@ -438,11 +486,11 @@ export default function HomePage() {
                     disabled={!isTaskBlock}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 14, width: '100%',
-                      padding: '14px 16px',
-                      marginBottom: expandedList ? 8 : 8,
-                      height: 68,
-                      background: 'var(--surface)',
-                      border: `1px solid ${isCenter && !expandedList ? dom.color + '50' : now ? dom.color + '40' : 'var(--border)'}`,
+                      padding: now ? '16px 16px' : '14px 16px',
+                      marginBottom: 8,
+                      height: now ? 76 : 68,
+                      background: stateBg,
+                      border: `${now ? 1.5 : 1}px solid ${stateBorder}`,
                       borderRadius: 14,
                       position: 'relative',
                       overflow: 'hidden',
@@ -451,49 +499,78 @@ export default function HomePage() {
                       transform: `rotateX(${rotateX}deg) scale(${scale}) translateZ(${translateZ}px)`,
                       transformOrigin: 'center',
                       transformStyle: 'preserve-3d',
-                      opacity: (done ? 0.55 : past ? 0.75 : 1) * opacity,
+                      opacity: stateOpacity * wheelOpacity,
+                      filter: stateFilter,
                       transition: 'transform 0.05s linear, opacity 0.05s linear, border-color 0.15s',
-                      boxShadow: isCenter && !expandedList
-                        ? `0 8px 24px ${dom.color}25, 0 0 0 1px ${dom.color}40`
-                        : now ? `0 0 0 1px ${dom.color}30, 0 2px 12px ${dom.color}15` : 'none',
+                      boxShadow: now
+                        ? `0 10px 28px ${dom.color}30, 0 0 0 1.5px ${dom.color}50, inset 0 0 0 1px ${dom.color}15`
+                        : isCenter && !expandedList
+                          ? `0 6px 18px ${dom.color}20, 0 0 0 1px ${dom.color}30`
+                          : 'none',
                       scrollSnapAlign: 'center',
                       scrollSnapStop: 'always',
                     }}
                   >
+                    {/* Left color stripe — thicker when "now" */}
                     <div style={{
                       position: 'absolute', top: 0, left: 0, bottom: 0,
-                      width: 4, background: dom.color,
+                      width: now ? 5 : 4,
+                      background: past ? T.textFaint : dom.color,
                     }} />
 
+                    {/* Now glow pulse on left edge */}
+                    {now && (
+                      <div style={{
+                        position: 'absolute', top: 0, left: 0, bottom: 0, width: 3,
+                        background: dom.color,
+                        boxShadow: `0 0 12px ${dom.color}, 0 0 24px ${dom.color}80`,
+                        animation: 'pulse-dot 1.4s ease-in-out infinite',
+                      }} />
+                    )}
+
                     <div className="mono" style={{
-                      marginLeft: 4,
-                      width: 60, fontSize: 13, color: now ? dom.color : T.textMuted,
+                      marginLeft: now ? 6 : 4,
+                      width: 60,
+                      fontSize: now ? 14 : 13,
+                      color: now ? dom.color : past ? T.textFaint : T.textMuted,
                       fontWeight: 700, flexShrink: 0, lineHeight: 1.2, letterSpacing: '-0.02em',
                     }}>
                       {fmt12(b.start_time).replace(/ (am|pm)/, '')}
-                      <span style={{ fontSize: 10, color: T.textFaint, fontWeight: 500 }}>{fmt12(b.start_time).match(/(am|pm)$/)?.[0] || ''}</span>
+                      <span style={{ fontSize: 10, color: past ? T.textFaint : T.textFaint, fontWeight: 500 }}>{fmt12(b.start_time).match(/(am|pm)$/)?.[0] || ''}</span>
                     </div>
 
                     <div style={{
-                      width: 11, height: 11, borderRadius: '50%',
-                      background: done ? dom.color : 'transparent',
-                      border: `2px solid ${dom.color}`,
+                      width: now ? 13 : 11, height: now ? 13 : 11, borderRadius: '50%',
+                      background: done ? dom.color : now ? dom.color : 'transparent',
+                      border: `2px solid ${past ? T.textFaint : dom.color}`,
                       flexShrink: 0,
-                      boxShadow: now ? `0 0 0 5px ${dom.color}22` : 'none',
+                      boxShadow: now ? `0 0 0 5px ${dom.color}30, 0 0 12px ${dom.color}` : 'none',
                       transition: 'all 0.2s',
                     }} />
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="title-display" style={{
-                        fontSize: 16, fontWeight: 700,
-                        color: T.text,
-                        textDecoration: done ? 'line-through' : 'none',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        lineHeight: 1.3, letterSpacing: '-0.02em',
-                      }}>{b.task_name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {now && (
+                          <span style={{
+                            fontSize: 9, fontWeight: 800, color: '#fff',
+                            background: dom.color,
+                            padding: '2px 6px', borderRadius: 4,
+                            letterSpacing: '0.08em', textTransform: 'uppercase',
+                            flexShrink: 0,
+                          }}>NOW</span>
+                        )}
+                        <div className="title-display" style={{
+                          fontSize: now ? 17 : 16,
+                          fontWeight: now ? 800 : past ? 600 : 700,
+                          color: stateTitleColor,
+                          textDecoration: done ? 'line-through' : 'none',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          lineHeight: 1.3, letterSpacing: '-0.02em',
+                        }}>{b.task_name}</div>
+                      </div>
                       {b.description && (
                         <div style={{
-                          fontSize: 12, color: T.textMuted, marginTop: 3,
+                          fontSize: 12, color: past ? T.textFaint : T.textMuted, marginTop: 3,
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         }}>{b.description}</div>
                       )}

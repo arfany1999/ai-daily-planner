@@ -8,27 +8,28 @@ function getTodayDate(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: TIMEZONE });
 }
 
-export const GET = withAuth(async (_req, userId) => {
-  const today = getTodayDate();
+export const GET = withAuth(async (req, userId) => {
+  const url = new URL(req.url);
+  const date = url.searchParams.get('date') || getTodayDate();
 
   const { data } = await supabaseAdmin
     .from('todos')
     .select('todo, created_at')
     .eq('user_id', userId)
-    .eq('date', today)
+    .eq('date', date)
     .single();
 
   const { data: completionRows } = await supabaseAdmin
     .from('task_completions')
     .select('task_id')
     .eq('user_id', userId)
-    .eq('date', today);
+    .eq('date', date);
 
   const completed_ids = (completionRows || []).map((c: { task_id: string }) => c.task_id);
 
   if (data?.todo) {
-    return NextResponse.json({ plan: data.todo, date: today, generated_at: data.created_at, completed_ids });
+    return NextResponse.json({ plan: data.todo, date, generated_at: data.created_at, completed_ids });
   }
 
-  return NextResponse.json({ plan: null, date: today, completed_ids });
+  return NextResponse.json({ plan: null, date, completed_ids });
 });
