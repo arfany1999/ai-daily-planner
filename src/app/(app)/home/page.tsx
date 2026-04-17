@@ -337,18 +337,17 @@ export default function HomePage() {
                 color: refreshing ? T.textFaint : T.textMuted, cursor: refreshing ? 'wait' : 'pointer',
               }}>{refreshing ? '…' : 'Refresh'}</button>
           </div>
-          <div style={{
-            background: 'var(--surface)',
-            borderRadius: 14,
-            border: '1px solid var(--border)',
-            overflow: 'hidden',
-          }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {merged.length === 0 && (
-              <div style={{ padding: '32px 16px', textAlign: 'center', color: T.textMuted, fontSize: 12.5 }}>
+              <div style={{
+                padding: '32px 16px', textAlign: 'center',
+                color: T.textMuted, fontSize: 13,
+                background: 'var(--surface)', borderRadius: 14, border: '1px dashed var(--border)',
+              }}>
                 Nothing scheduled. Tap <span className="mono" style={{ background: 'var(--surface-hi)', padding: '1px 5px', borderRadius: 4 }}>⌘K</span> to add a block.
               </div>
             )}
-            {merged.map((b, i) => {
+            {merged.map((b) => {
               const dom = DOMAINS.find(d => d.id === (b.domain || urgencyToDomain(b.urgency).id)) || DOMAINS[4];
               const now = isBlockNow(b);
               const past = isBlockPast(b);
@@ -356,46 +355,71 @@ export default function HomePage() {
               const isTaskBlock = isTask(b);
               return (
                 <button
-                  key={b.id + '-' + i}
+                  key={b.id}
                   onClick={() => isTaskBlock && toggleTask(b.id)}
                   disabled={!isTaskBlock}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                    padding: '12px 14px',
-                    borderBottom: i < merged.length - 1 ? '1px solid var(--border-soft)' : 'none',
-                    background: 'transparent', borderLeft: 'none', borderRight: 'none', borderTop: 'none',
+                    display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                    padding: '14px 16px',
+                    background: 'var(--surface)',
+                    border: `1px solid ${now ? dom.color + '40' : 'var(--border)'}`,
+                    borderRadius: 14,
+                    position: 'relative',
+                    overflow: 'hidden',
                     cursor: isTaskBlock ? 'pointer' : 'default',
-                    opacity: done ? 0.42 : past ? 0.58 : 1,
+                    opacity: done ? 0.45 : past ? 0.62 : 1,
                     textAlign: 'left',
-                    transition: 'background 0.15s',
+                    transition: 'all 0.2s var(--ease-spring)',
+                    boxShadow: now ? `0 0 0 1px ${dom.color}30, 0 2px 12px ${dom.color}15` : 'none',
                   }}
-                  onMouseEnter={e => { if (isTaskBlock) e.currentTarget.style.background = 'var(--surface-hover)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                  onMouseEnter={e => { if (isTaskBlock) { e.currentTarget.style.background = 'var(--surface-hi)'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.transform = 'translateY(0)'; }}
                 >
+                  {/* left color stripe */}
+                  <div style={{
+                    position: 'absolute', top: 0, left: 0, bottom: 0,
+                    width: 4, background: dom.color,
+                  }} />
+
                   <div className="mono" style={{
-                    width: 58, fontSize: 11, color: now ? dom.color : T.textMuted,
-                    fontWeight: 700, flexShrink: 0, lineHeight: 1.25,
+                    marginLeft: 4,
+                    width: 60, fontSize: 13, color: now ? dom.color : T.textMuted,
+                    fontWeight: 700, flexShrink: 0, lineHeight: 1.2, letterSpacing: '-0.02em',
                   }}>
                     {fmt12(b.start_time).replace(/ (am|pm)/, '')}
-                    <span style={{ fontSize: 9, color: T.textFaint, fontWeight: 500 }}>{fmt12(b.start_time).match(/(am|pm)$/)?.[0] || ''}</span>
+                    <span style={{ fontSize: 10, color: T.textFaint, fontWeight: 500 }}>{fmt12(b.start_time).match(/(am|pm)$/)?.[0] || ''}</span>
                   </div>
+
                   <div style={{
-                    width: 9, height: 9, borderRadius: '50%',
+                    width: 11, height: 11, borderRadius: '50%',
                     background: done ? dom.color : 'transparent',
                     border: `2px solid ${dom.color}`,
                     flexShrink: 0,
-                    boxShadow: now ? `0 0 0 4px ${dom.color}25` : 'none',
+                    boxShadow: now ? `0 0 0 5px ${dom.color}22` : 'none',
                     transition: 'all 0.2s',
                   }} />
+
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: 13.5, fontWeight: 700,
-                      color: now ? T.text : past || done ? T.textSoft : T.text,
+                    <div className="title-display" style={{
+                      fontSize: 16, fontWeight: 700,
+                      color: T.text,
                       textDecoration: done ? 'line-through' : 'none',
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      lineHeight: 1.35, letterSpacing: '-0.01em',
+                      lineHeight: 1.3, letterSpacing: '-0.02em',
                     }}>{b.task_name}</div>
+                    {b.description && (
+                      <div style={{
+                        fontSize: 12, color: T.textMuted, marginTop: 3,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>{b.description}</div>
+                    )}
                   </div>
+
+                  {done && (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, color: dom.color }}>
+                      <path d="M4 12l6 6L20 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
                 </button>
               );
             })}
