@@ -121,6 +121,7 @@ export default function HomePage() {
   const [domainFilter, setDomainFilter] = useState<Record<string, boolean>>({});
   const [selectedDate, setSelectedDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: TZ }));
   const [expandedList, setExpandedList] = useState(false);
+  const [wheelScroll, setWheelScroll] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -200,13 +201,16 @@ export default function HomePage() {
     return Math.max(0, merged.length - 1);
   }, [merged]);
 
-  // Auto-scroll to anchor on first render + data refresh.
+  // Auto-scroll wheel to anchor (current or next block) on first render + data refresh.
   // MUST run on every render (Rules of Hooks) — keep above any conditional return.
   useEffect(() => {
     if (!listRef.current || merged.length === 0) return;
     const el = listRef.current.querySelector(`[data-idx="${anchorIdx}"]`) as HTMLElement | null;
     if (el) {
-      listRef.current.scrollTop = Math.max(0, el.offsetTop - 80);
+      const container = listRef.current;
+      const targetScroll = el.offsetTop - (container.clientHeight / 2) + (el.clientHeight / 2);
+      container.scrollTop = Math.max(0, targetScroll);
+      setWheelScroll(container.scrollTop);
     }
   }, [anchorIdx, merged.length, expandedList]);
 
@@ -378,145 +382,132 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Hidden-past indicator */}
-          {!expandedList && pastCount > 0 && (
-            <button onClick={() => setExpandedList(true)} style={{
-              width: '100%', padding: '6px 0', marginBottom: 6,
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              fontSize: 11, color: T.textFaint, fontWeight: 500,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          {merged.length === 0 ? (
+            <div style={{
+              padding: '32px 16px', textAlign: 'center',
+              color: T.textMuted, fontSize: 13,
+              background: 'var(--surface)', borderRadius: 14, border: '1px dashed var(--border)',
             }}>
-              <span style={{ height: 1, flex: 1, background: 'var(--border)', maxWidth: 60 }} />
-              ↑ {pastCount} earlier — tap to show
-              <span style={{ height: 1, flex: 1, background: 'var(--border)', maxWidth: 60 }} />
-            </button>
-          )}
+              Nothing scheduled. Tap <span className="mono" style={{ background: 'var(--surface-hi)', padding: '1px 5px', borderRadius: 4 }}>⌘K</span> to add a block.
+            </div>
+          ) : (
+            <div
+              ref={listRef}
+              onScroll={(e) => setWheelScroll((e.currentTarget as HTMLDivElement).scrollTop)}
+              style={{
+                height: expandedList ? 'auto' : 360,
+                maxHeight: expandedList ? 'none' : 360,
+                overflowY: expandedList ? 'visible' : 'auto',
+                overflowX: 'hidden',
+                position: 'relative',
+                perspective: expandedList ? 'none' : '900px',
+                perspectiveOrigin: 'center',
+                scrollSnapType: expandedList ? 'none' : 'y mandatory',
+                WebkitOverflowScrolling: 'touch',
+                paddingTop: expandedList ? 0 : 140,
+                paddingBottom: expandedList ? 0 : 140,
+                // soft edge fade on collapsed wheel
+                maskImage: expandedList ? 'none' : 'linear-gradient(180deg, transparent 0, black 22%, black 78%, transparent 100%)',
+                WebkitMaskImage: expandedList ? 'none' : 'linear-gradient(180deg, transparent 0, black 22%, black 78%, transparent 100%)',
+              }}
+            >
+              {merged.map((b, idx) => {
+                const dom = DOMAINS.find(d => d.id === (b.domain || urgencyToDomain(b.urgency).id)) || DOMAINS[4];
+                const now = isBlockNow(b);
+                const past = isBlockPast(b);
+                const done = doneToday.has(b.id);
+                const isTaskBlock = isTask(b);
 
-          <div
-            ref={listRef}
-            style={{
-              display: 'flex', flexDirection: 'column', gap: 8,
-              position: 'relative',
-              maxHeight: expandedList ? 'none' : undefined,
-              overflowY: expandedList ? 'visible' : 'visible',
-              // fade edges while collapsed — soft hint of hidden items
-              maskImage: expandedList ? 'none' : (pastCount > 0 && futureCount > 0)
-                ? 'linear-gradient(180deg, transparent 0, black 18px, black calc(100% - 18px), transparent 100%)'
-                : pastCount > 0
-                  ? 'linear-gradient(180deg, transparent 0, black 18px, black 100%)'
-                  : futureCount > 0
-                    ? 'linear-gradient(180deg, black 0, black calc(100% - 18px), transparent 100%)'
-                    : 'none',
-              WebkitMaskImage: expandedList ? 'none' : (pastCount > 0 && futureCount > 0)
-                ? 'linear-gradient(180deg, transparent 0, black 18px, black calc(100% - 18px), transparent 100%)'
-                : pastCount > 0
-                  ? 'linear-gradient(180deg, transparent 0, black 18px, black 100%)'
-                  : futureCount > 0
-                    ? 'linear-gradient(180deg, black 0, black calc(100% - 18px), transparent 100%)'
-                    : 'none',
-            }}
-          >
-            {merged.length === 0 && (
-              <div style={{
-                padding: '32px 16px', textAlign: 'center',
-                color: T.textMuted, fontSize: 13,
-                background: 'var(--surface)', borderRadius: 14, border: '1px dashed var(--border)',
-              }}>
-                Nothing scheduled. Tap <span className="mono" style={{ background: 'var(--surface-hi)', padding: '1px 5px', borderRadius: 4 }}>⌘K</span> to add a block.
-              </div>
-            )}
-            {visibleMerged.map((b, localIdx) => {
-              const idx = expandedList ? localIdx : windowStart + localIdx;
-              const dom = DOMAINS.find(d => d.id === (b.domain || urgencyToDomain(b.urgency).id)) || DOMAINS[4];
-              const now = isBlockNow(b);
-              const past = isBlockPast(b);
-              const done = doneToday.has(b.id);
-              const isTaskBlock = isTask(b);
-              return (
-                <button
-                  key={b.id}
-                  data-idx={idx}
-                  onClick={() => isTaskBlock && toggleTask(b.id)}
-                  disabled={!isTaskBlock}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 14, width: '100%',
-                    padding: '14px 16px',
-                    background: 'var(--surface)',
-                    border: `1px solid ${now ? dom.color + '40' : 'var(--border)'}`,
-                    borderRadius: 14,
-                    position: 'relative',
-                    overflow: 'hidden',
-                    cursor: isTaskBlock ? 'pointer' : 'default',
-                    opacity: done ? 0.45 : past ? 0.62 : 1,
-                    textAlign: 'left',
-                    transition: 'all 0.2s var(--ease-spring)',
-                    boxShadow: now ? `0 0 0 1px ${dom.color}30, 0 2px 12px ${dom.color}15` : 'none',
-                  }}
-                  onMouseEnter={e => { if (isTaskBlock) { e.currentTarget.style.background = 'var(--surface-hi)'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                >
-                  {/* left color stripe */}
-                  <div style={{
-                    position: 'absolute', top: 0, left: 0, bottom: 0,
-                    width: 4, background: dom.color,
-                  }} />
+                // Wheel transform: distance from container center
+                const ROW = 76; // card height + gap
+                const cardCenter = idx * ROW + ROW / 2 + (expandedList ? 0 : 140);
+                const viewCenter = wheelScroll + (expandedList ? 0 : 180);
+                const dist = expandedList ? 0 : (cardCenter - viewCenter) / ROW;
+                const clamped = Math.max(-3, Math.min(3, dist));
+                const rotateX = expandedList ? 0 : clamped * -14;
+                const scale = expandedList ? 1 : Math.max(0.78, 1 - Math.abs(clamped) * 0.07);
+                const opacity = expandedList ? 1 : Math.max(0.3, 1 - Math.abs(clamped) * 0.28);
+                const translateZ = expandedList ? 0 : -Math.abs(clamped) * 32;
+                const isCenter = Math.abs(clamped) < 0.5;
 
-                  <div className="mono" style={{
-                    marginLeft: 4,
-                    width: 60, fontSize: 13, color: now ? dom.color : T.textMuted,
-                    fontWeight: 700, flexShrink: 0, lineHeight: 1.2, letterSpacing: '-0.02em',
-                  }}>
-                    {fmt12(b.start_time).replace(/ (am|pm)/, '')}
-                    <span style={{ fontSize: 10, color: T.textFaint, fontWeight: 500 }}>{fmt12(b.start_time).match(/(am|pm)$/)?.[0] || ''}</span>
-                  </div>
+                return (
+                  <button
+                    key={b.id}
+                    data-idx={idx}
+                    onClick={() => isTaskBlock && toggleTask(b.id)}
+                    disabled={!isTaskBlock}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                      padding: '14px 16px',
+                      marginBottom: expandedList ? 8 : 8,
+                      height: 68,
+                      background: 'var(--surface)',
+                      border: `1px solid ${isCenter && !expandedList ? dom.color + '50' : now ? dom.color + '40' : 'var(--border)'}`,
+                      borderRadius: 14,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      cursor: isTaskBlock ? 'pointer' : 'default',
+                      textAlign: 'left',
+                      transform: `rotateX(${rotateX}deg) scale(${scale}) translateZ(${translateZ}px)`,
+                      transformOrigin: 'center',
+                      transformStyle: 'preserve-3d',
+                      opacity: (done ? 0.55 : past ? 0.75 : 1) * opacity,
+                      transition: 'transform 0.05s linear, opacity 0.05s linear, border-color 0.15s',
+                      boxShadow: isCenter && !expandedList
+                        ? `0 8px 24px ${dom.color}25, 0 0 0 1px ${dom.color}40`
+                        : now ? `0 0 0 1px ${dom.color}30, 0 2px 12px ${dom.color}15` : 'none',
+                      scrollSnapAlign: 'center',
+                      scrollSnapStop: 'always',
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute', top: 0, left: 0, bottom: 0,
+                      width: 4, background: dom.color,
+                    }} />
 
-                  <div style={{
-                    width: 11, height: 11, borderRadius: '50%',
-                    background: done ? dom.color : 'transparent',
-                    border: `2px solid ${dom.color}`,
-                    flexShrink: 0,
-                    boxShadow: now ? `0 0 0 5px ${dom.color}22` : 'none',
-                    transition: 'all 0.2s',
-                  }} />
+                    <div className="mono" style={{
+                      marginLeft: 4,
+                      width: 60, fontSize: 13, color: now ? dom.color : T.textMuted,
+                      fontWeight: 700, flexShrink: 0, lineHeight: 1.2, letterSpacing: '-0.02em',
+                    }}>
+                      {fmt12(b.start_time).replace(/ (am|pm)/, '')}
+                      <span style={{ fontSize: 10, color: T.textFaint, fontWeight: 500 }}>{fmt12(b.start_time).match(/(am|pm)$/)?.[0] || ''}</span>
+                    </div>
 
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="title-display" style={{
-                      fontSize: 16, fontWeight: 700,
-                      color: T.text,
-                      textDecoration: done ? 'line-through' : 'none',
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      lineHeight: 1.3, letterSpacing: '-0.02em',
-                    }}>{b.task_name}</div>
-                    {b.description && (
-                      <div style={{
-                        fontSize: 12, color: T.textMuted, marginTop: 3,
+                    <div style={{
+                      width: 11, height: 11, borderRadius: '50%',
+                      background: done ? dom.color : 'transparent',
+                      border: `2px solid ${dom.color}`,
+                      flexShrink: 0,
+                      boxShadow: now ? `0 0 0 5px ${dom.color}22` : 'none',
+                      transition: 'all 0.2s',
+                    }} />
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="title-display" style={{
+                        fontSize: 16, fontWeight: 700,
+                        color: T.text,
+                        textDecoration: done ? 'line-through' : 'none',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>{b.description}</div>
+                        lineHeight: 1.3, letterSpacing: '-0.02em',
+                      }}>{b.task_name}</div>
+                      {b.description && (
+                        <div style={{
+                          fontSize: 12, color: T.textMuted, marginTop: 3,
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{b.description}</div>
+                      )}
+                    </div>
+
+                    {done && (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, color: dom.color }}>
+                        <path d="M4 12l6 6L20 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
                     )}
-                  </div>
-
-                  {done && (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, color: dom.color }}>
-                      <path d="M4 12l6 6L20 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Hidden-future indicator */}
-          {!expandedList && futureCount > 0 && (
-            <button onClick={() => setExpandedList(true)} style={{
-              width: '100%', padding: '8px 0 2px',
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              fontSize: 11, color: T.textFaint, fontWeight: 500,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}>
-              <span style={{ height: 1, flex: 1, background: 'var(--border)', maxWidth: 60 }} />
-              ↓ {futureCount} more later — tap to show
-              <span style={{ height: 1, flex: 1, background: 'var(--border)', maxWidth: 60 }} />
-            </button>
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
 
