@@ -29,11 +29,11 @@ const items = [
       </svg>
     ),
   },
-  { id: '/focus', label: 'Focus',
+  { id: '/canvas', label: 'Canvas',
     icon: (a: boolean) => (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="8" stroke={a ? T.teal : T.textMuted} strokeWidth="1.7" fill={a ? 'var(--teal-glow)' : 'none'}/>
-        <circle cx="12" cy="12" r="3" fill={a ? T.teal : T.textMuted}/>
+        <path d="M12 3l2.5 6 6.5.5-5 4.5L18 21l-6-3.5L6 21l1.5-7-5-4.5 6.5-.5L12 3z"
+          stroke={a ? T.teal : T.textMuted} strokeWidth="1.6" fill={a ? 'var(--teal-glow)' : 'none'} strokeLinejoin="round"/>
       </svg>
     ),
   },

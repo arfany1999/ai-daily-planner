@@ -59,7 +59,7 @@ export default function Nav() {
         <span style={{ fontSize: 17, fontWeight: 700, color: T.text, letterSpacing: '-0.5px' }}>AI Planner</span>
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {[{ label: 'Progress', href: '/progress' }, { label: 'Settings', href: '/settings' }].map((l) => (
+        {[{ label: 'Settings', href: '/settings' }].map((l) => (
           <Link key={l.label} href={l.href} style={{
             fontSize: 12, color: T.textMuted, cursor: 'pointer',
             padding: '5px 10px', borderRadius: 8,

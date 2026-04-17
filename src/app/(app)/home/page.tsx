@@ -264,43 +264,30 @@ export default function HomePage() {
     <>
       <DayTicker selected={selectedDate} onSelect={setSelectedDate} daysBefore={7} daysAfter={60} />
 
-      <div style={{ padding: '20px 16px 40px', maxWidth: 1100, margin: '0 auto' }}>
-        {/* Greeting + sunrise/sunset chip */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 11, color: T.textFaint, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              {greeting}, {firstName}
-            </div>
-            <h1 className="title-display" style={{ fontSize: 32, fontWeight: 800, color: T.text, letterSpacing: '-0.035em', lineHeight: 1.05, marginTop: 4 }}>
-              {nowBlock ? `On now: ${nowBlock.task_name.slice(0, 36)}` :
-               nextBlock ? `Next: ${nextBlock.task_name.slice(0, 36)}` :
-               pendingTasks.length === 0 ? 'Nothing left today.' : "Here's the plan."}
-            </h1>
-            {todayPlan?.summary && (
-              <div style={{ fontSize: 13, color: T.textSoft, marginTop: 8, maxWidth: 540, lineHeight: 1.5 }}>
-                {todayPlan.summary}
-              </div>
-            )}
+      <div style={{ padding: '18px 16px 40px', maxWidth: 1100, margin: '0 auto' }}>
+        {/* Greeting — minimal, single column */}
+        <div style={{ marginBottom: 22 }}>
+          <div style={{ fontSize: 11, color: T.textFaint, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            {greeting}, {firstName}
           </div>
-          <div style={{
-            display: 'flex', flexDirection: 'column', gap: 6,
-            padding: '10px 12px', background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)',
-            minWidth: 140, flexShrink: 0,
+          <h1 className="title-display" style={{
+            fontSize: 26, fontWeight: 700, color: T.text, letterSpacing: '-0.03em', lineHeight: 1.15, marginTop: 4,
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 10, color: T.textFaint, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Daylight</span>
-              <span className="mono" style={{ fontSize: 10, color: T.yellow }}>Melb</span>
-            </div>
-            <div className="mono" style={{ fontSize: 12, color: T.textSoft, display: 'flex', justifyContent: 'space-between' }}>
-              <span>↑ {sunriseStr}</span>
-              <span>↓ {sunsetStr}</span>
-            </div>
+            {nowBlock ? nowBlock.task_name.slice(0, 50) :
+             nextBlock ? `Next · ${nextBlock.task_name.slice(0, 40)}` :
+             pendingTasks.length === 0 ? 'Nothing left today.' : "Today's plan"}
+          </h1>
+          <div className="mono" style={{ fontSize: 11, color: T.textFaint, marginTop: 6, letterSpacing: '0.02em' }}>
+            {doneCount}/{allTasks.length} done
+            {nowBlock && ` · ${fmt12(nowBlock.start_time)}–${fmt12(nowBlock.end_time)}`}
+            {!nowBlock && nextBlock && ` · at ${fmt12(nextBlock.start_time)}`}
+            <span className="hide-mobile"> · ↑{sunriseStr} ↓{sunsetStr}</span>
           </div>
         </div>
 
-        {/* Top 3 priorities */}
+        {/* Top 3 priorities — desktop only (mobile: already visible in timeline as urgent) */}
         {topPriorities.length > 0 && (
-          <div className="anim-slide" style={{ marginBottom: 18 }}>
+          <div className="hide-mobile anim-slide" style={{ marginBottom: 18 }}>
             <div style={{ fontSize: 10.5, color: T.textFaint, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
               Today · top priorities
             </div>
@@ -337,23 +324,23 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Timeline (primary canvas) */}
-        <div className="anim-slide" style={{ marginBottom: 20 }}>
+        {/* Timeline — minimal, one-line rows */}
+        <div className="anim-slide" style={{ marginBottom: 22 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ fontSize: 10.5, color: T.textFaint, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Schedule · {doneCount}/{allTasks.length} done
+              Today
             </div>
             <button onClick={refresh} disabled={refreshing}
               style={{
-                fontSize: 11, padding: '4px 10px', borderRadius: 7,
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                color: refreshing ? T.textFaint : T.textSoft, cursor: refreshing ? 'wait' : 'pointer',
-              }}>{refreshing ? 'Regenerating…' : 'Regenerate'}</button>
+                fontSize: 11, padding: '3px 9px', borderRadius: 6,
+                background: 'transparent', border: '1px solid var(--border)',
+                color: refreshing ? T.textFaint : T.textMuted, cursor: refreshing ? 'wait' : 'pointer',
+              }}>{refreshing ? '…' : 'Refresh'}</button>
           </div>
-          <div style={{ background: 'var(--surface)', borderRadius: 14, border: '1px solid var(--border)', overflow: 'hidden' }}>
+          <div>
             {merged.length === 0 && (
-              <div style={{ padding: 32, textAlign: 'center', color: T.textMuted, fontSize: 12.5 }}>
-                Nothing scheduled yet. Press <span className="mono" style={{ background: 'var(--surface-hi)', padding: '1px 5px', borderRadius: 4 }}>⌘K</span> to add your first block.
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: T.textMuted, fontSize: 12.5, border: '1px dashed var(--border)', borderRadius: 12 }}>
+                Nothing scheduled. Tap <span className="mono" style={{ background: 'var(--surface)', padding: '1px 5px', borderRadius: 4 }}>⌘K</span> to add a block.
               </div>
             )}
             {merged.map((b, i) => {
@@ -363,52 +350,53 @@ export default function HomePage() {
               const done = doneToday.has(b.id);
               const isTaskBlock = isTask(b);
               return (
-                <div key={b.id + '-' + i} style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px 14px',
-                  borderBottom: i < merged.length - 1 ? '1px solid var(--border-soft)' : 'none',
-                  background: now ? dom.color + '10' : 'transparent',
-                  opacity: done ? 0.45 : past ? 0.55 : 1,
-                  transition: 'background 0.2s',
-                }}>
-                  <div style={{ width: 3, alignSelf: 'stretch', minHeight: 26, borderRadius: 2, background: dom.color, flexShrink: 0 }} />
-                  <div className="mono" style={{ width: 64, fontSize: 11, color: now ? dom.color : T.textMuted, fontWeight: 600, flexShrink: 0 }}>
-                    <div>{fmt12(b.start_time)}</div>
-                    <div style={{ fontSize: 9, color: T.textFaint, fontWeight: 500 }}>{fmt12(b.end_time)}</div>
+                <button
+                  key={b.id + '-' + i}
+                  onClick={() => isTaskBlock && toggleTask(b.id)}
+                  disabled={!isTaskBlock}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+                    padding: '11px 2px',
+                    borderBottom: i < merged.length - 1 ? '1px solid var(--border-soft)' : 'none',
+                    background: 'transparent', border: 'none',
+                    cursor: isTaskBlock ? 'pointer' : 'default',
+                    opacity: done ? 0.42 : past ? 0.58 : 1,
+                    textAlign: 'left',
+                    transition: 'opacity 0.15s',
+                  }}>
+                  <div className="mono" style={{
+                    width: 58, fontSize: 11, color: now ? dom.color : T.textMuted,
+                    fontWeight: now ? 700 : 500, flexShrink: 0, lineHeight: 1.25,
+                  }}>
+                    {fmt12(b.start_time).replace(/ (am|pm)/, '')}
+                    <span style={{ fontSize: 9, color: T.textFaint }}>{fmt12(b.start_time).match(/(am|pm)$/)?.[0] || ''}</span>
                   </div>
-                  {isTaskBlock && (
-                    <button onClick={() => toggleTask(b.id)} style={{
-                      width: 18, height: 18, borderRadius: 5,
-                      background: done ? dom.color : 'transparent',
-                      border: '1.5px solid ' + (done ? dom.color : 'var(--border-strong)'),
-                      flexShrink: 0, cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'all 0.15s',
-                    }}>
-                      {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M4 12l6 6L20 6" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                    </button>
-                  )}
+                  <div style={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: done ? dom.color : 'transparent',
+                    border: `1.5px solid ${dom.color}`,
+                    flexShrink: 0,
+                    boxShadow: now ? `0 0 0 4px ${dom.color}20` : 'none',
+                    transition: 'all 0.2s',
+                  }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {now && <span style={{ width: 6, height: 6, borderRadius: '50%', background: dom.color, animation: 'pulse-dot 1.2s ease-in-out infinite' }} />}
-                      <div style={{
-                        fontSize: 13, fontWeight: now ? 700 : 500, color: T.text,
-                        textDecoration: done ? 'line-through' : 'none',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>{b.task_name}</div>
-                    </div>
-                    {b.description && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.description}</div>}
+                    <div style={{
+                      fontSize: 13, fontWeight: now ? 700 : 500,
+                      color: now ? T.text : T.textSoft,
+                      textDecoration: done ? 'line-through' : 'none',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      lineHeight: 1.35,
+                    }}>{b.task_name}</div>
                   </div>
-                  <DomainChip domainId={dom.id} />
-                </div>
+                </button>
               );
             })}
           </div>
         </div>
 
-        {/* Nudges & warnings */}
+        {/* Nudges & warnings — desktop only; mobile already has coach + timeline */}
         {(nudges.length > 0 || (todayPlan?.warnings || []).length > 0) && (
-          <div className="anim-slide" style={{ marginBottom: 20 }}>
+          <div className="hide-mobile anim-slide" style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 10.5, color: T.textFaint, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
               Nudges
             </div>
@@ -434,9 +422,9 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Briefing summary */}
+        {/* Briefing summary — desktop only */}
         {briefing?.summary && (
-          <div className="anim-slide" style={{
+          <div className="hide-mobile anim-slide" style={{
             marginBottom: 18,
             padding: '14px 16px', borderRadius: 14,
             background: 'var(--surface)', border: '1px solid var(--border)',
@@ -460,7 +448,7 @@ export default function HomePage() {
           </div>
         )}
 
-        <div style={{ fontSize: 10.5, color: T.textFaint, textAlign: 'center', marginTop: 30 }}>
+        <div className="hide-mobile" style={{ fontSize: 10.5, color: T.textFaint, textAlign: 'center', marginTop: 30 }}>
           Press <span className="mono" style={{ background: 'var(--surface)', padding: '2px 6px', borderRadius: 4 }}>⌘K</span> for anything.
         </div>
       </div>

@@ -284,6 +284,14 @@ input::placeholder, textarea::placeholder {
   }
 }
 
+/* ── Mobile / desktop visibility helpers ── */
+@media (max-width: 767px) {
+  .hide-mobile { display: none !important; }
+}
+@media (min-width: 768px) {
+  .mobile-only { display: none !important; }
+}
+
 /* ── DayTicker (horizontal week strip above content) ── */
 .dayticker {
   position: sticky;
