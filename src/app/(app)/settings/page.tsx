@@ -327,7 +327,6 @@ export default function SettingsPage() {
         </div>
         {[
           { key: 'google', label: 'Google Calendar', desc: 'Required — AI Planner mirrors your schedule 1:1', icon: '📅', connected: conns.google, required: true },
-          { key: 'gmail', label: 'Gmail', desc: 'Email highlights in briefings', icon: '📧', connected: conns.gmail, required: false },
           { key: 'canvas', label: 'RMIT Canvas', desc: 'Optional — assignments, announcements, deadlines', icon: '🎓', connected: conns.canvas, required: false },
         ].map((c) => (
           <div key={c.key} style={{

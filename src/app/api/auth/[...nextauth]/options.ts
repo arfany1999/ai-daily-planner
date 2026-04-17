@@ -12,11 +12,11 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
-          // Mandatory calendar scope for 1:1 mirror; gmail.readonly feeds the briefing
+          // Mandatory calendar scope for 1:1 mirror. (Gmail intentionally omitted —
+          // we don't ask users to share their email.)
           scope: [
             'openid', 'email', 'profile',
             'https://www.googleapis.com/auth/calendar',
-            'https://www.googleapis.com/auth/gmail.readonly',
           ].join(' '),
           // prompt=consent forces Google to always return a refresh_token so
           // background sync keeps working after the access_token expires
