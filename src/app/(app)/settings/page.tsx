@@ -293,7 +293,7 @@ export default function SettingsPage() {
 
           <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: T.textMuted, marginBottom: 10 }}>What&apos;s included</div>
-            {['AI-generated daily schedule', 'Google Calendar + Gmail real-time sync', 'Canvas deadlines + announcements', 'Cross-referenced intelligence alerts', '5-layer intelligence engine', 'Streaming AI chief of staff'].map((f) => (
+            {['Natural-language ⌘K and voice planning', '1:1 Google Calendar mirror (two-way)', 'RMIT Canvas: assignments, quizzes, announcements, key dates', 'AI chief-of-staff: morning briefing, proactive nudges, one-tap reschedule', 'Study materials from your slides (flashcards + MCQs)', 'Light / dark / auto themes + density tiers'].map((f) => (
               <div key={f} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${T.border}`, fontSize: 12, color: T.text }}>
                 <span style={{ color: '#7c3aed' }}>✓</span> {f}
               </div>

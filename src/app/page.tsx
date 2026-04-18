@@ -9,13 +9,13 @@ import { T } from '@/lib/theme';
 const B = ({ children }: { children: React.ReactNode }) => <strong style={{ fontWeight: 600, color: T.text }}>{children}</strong>;
 
 const layers = [
-  { icon: '🎓', label: 'Canvas', desc: <>Reads your university portal. <B>Assignments</B>, <B>announcements</B>, <B>deadlines</B>. Pulled and parsed automatically.</> },
-  { icon: '📅', label: 'Calendar', desc: <>Syncs your university classes, <B>work shifts</B>, and events. <B>Tagged by course</B>. Linked.</> },
-  { icon: '📧', label: 'Gmail', desc: <>Reads <B>professor emails</B>. Matched to the right university course. <B>Nothing missed</B>.</> },
-  { icon: '🚨', label: 'Gaps', desc: <><B>Cross-references all three</B>. Quiz announced but not calendared? <B>You&apos;ll know</B>.</> },
-  { icon: '🌅', label: 'Daily Plan', desc: <>Builds a <B>prioritised</B>, <B>time-blocked</B> day. Ready before you wake up.</> },
-  { icon: '📚', label: 'Study Tools', desc: <>Turns your university lecture files into <B>flashcards</B> and <B>MCQs</B>. Zero effort.</> },
-  { icon: '🤖', label: 'Ask AI', desc: <>One question, <B>every source</B> checked, one clear answer with <B>what to do next</B>.</> },
+  { icon: '⌘', label: 'Plain-English planning', desc: <>Type or speak <B>&ldquo;block 90 min for AT3 friday 2pm&rdquo;</B>. Done, and on your Google Calendar.</> },
+  { icon: '🔁', label: '1:1 Google Calendar mirror', desc: <>Every block you create, move, or delete here lands on your <B>Google Calendar</B>. Two-way.</> },
+  { icon: '🎓', label: 'RMIT Canvas, in full', desc: <>Assignments, <B>quizzes</B>, announcements, key dates — pulled and tagged by course. Never miss a deadline.</> },
+  { icon: '🧠', label: 'Chief-of-staff AI', desc: <>Morning briefing at dawn. <B>Proactive nudges</B> when a deadline creeps up. One-tap reschedule.</> },
+  { icon: '🎤', label: 'Voice-ready', desc: <>Hold the mic, say what you want. <B>&ldquo;I&rsquo;m tired, swap today for light blocks.&rdquo;</B></> },
+  { icon: '🌅', label: 'Wheel-style today', desc: <>Your day presents as a <B>3D wheel</B> centered on what&rsquo;s now. Past fades. Next is always crisp.</> },
+  { icon: '📚', label: 'Study materials from your slides', desc: <>Turn a lecture PDF into <B>flashcards</B>, MCQs, and a tight summary. One tap.</> },
 ];
 
 export default function LandingPage() {
@@ -50,10 +50,10 @@ export default function LandingPage() {
       <div style={{ textAlign: 'center', padding: '80px 24px 60px', maxWidth: 700, margin: '0 auto', position: 'relative' }}>
         <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 400, height: 400, borderRadius: '50%', background: `radial-gradient(circle, ${T.teal}10, transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-1.5px', lineHeight: 1.15, marginBottom: 16, background: `linear-gradient(135deg, ${T.teal}, ${T.blue})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          Stop surviving university.<br />Start running it.
+          Your chief of staff.<br />On your calendar.
         </div>
         <div style={{ fontSize: 15, color: T.textSoft, fontWeight: 400, lineHeight: 1.8, maxWidth: 540, margin: '0 auto 36px' }}>
-          <span style={{ fontWeight: 600, color: T.text }}>AI Planner</span> — <B>5 layers of AI</B> that don&apos;t just store your university data. They <B>think</B> about it.
+          <span style={{ fontWeight: 600, color: T.text }}>AI Planner</span> talks to you in plain English, mirrors Google Calendar <B>1:1</B>, reads your Canvas, and defends your day. <B>No dashboards</B>. Just say what you need.
         </div>
         <Link href="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '14px 32px', background: `linear-gradient(135deg,${T.tealDk},${T.teal})`, color: '#fff', borderRadius: 12, fontSize: 16, fontWeight: 600, textDecoration: 'none', boxShadow: `0 4px 24px ${T.teal}30` }}>
           <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.9 33.6 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 5.7 29.2 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.2-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.4 18.8 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 5.7 29.2 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5 0 9.6-1.6 13.2-4.4l-6.1-5.2C29 36 26.6 36.7 24 36.7c-5.4 0-9.9-3.4-11.5-8.2l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.1 5.2C36.9 39.2 44 34 44 24c0-1.3-.2-2.7-.4-3.9z"/></svg>

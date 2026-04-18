@@ -80,8 +80,13 @@ function LoginContent() {
           </div>
         </div>
 
-        <div style={{ fontSize: 26, fontWeight: 700, color: T.text, letterSpacing: '-0.8px', marginBottom: 4 }}>AI Planner</div>
-        <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 28, lineHeight: 1.6 }}>5 layers of AI that <strong style={{ fontWeight: 600, color: T.text }}>think</strong> about your university data</div>
+        <div className="title-display" style={{ fontSize: 28, fontWeight: 800, color: T.text, letterSpacing: '-0.02em', marginBottom: 6 }}>AI Planner</div>
+        <div style={{ fontSize: 12.5, color: T.textSoft, marginBottom: 22, lineHeight: 1.55 }}>
+          Your chief-of-staff calendar.<br />
+          <span style={{ color: T.textMuted }}>
+            Plans your day in plain English. Mirrors Google Calendar 1:1. Reads Canvas. Voice-ready.
+          </span>
+        </div>
 
         {/* Tab switcher */}
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 3, marginBottom: 24, gap: 2 }}>
@@ -147,8 +152,9 @@ function LoginContent() {
               </svg>
               Sign in with Google
             </button>
-            <div style={{ marginTop: 14, padding: '9px 12px', borderRadius: 10, background: 'rgba(196,118,74,0.08)', border: '1px solid rgba(196,118,74,0.15)', fontSize: 11, color: T.textSoft, lineHeight: 1.6, textAlign: 'left' }}>
-              <strong style={{ color: T.teal }}>Next step:</strong> Connect <strong>Calendar</strong>, <strong>Gmail</strong>, and <strong>Canvas</strong> from Settings to activate all 5 layers.
+            <div style={{ marginTop: 12, fontSize: 11, color: T.textMuted, lineHeight: 1.55, textAlign: 'center' }}>
+              Google Calendar permission is requested at sign-in —<br />
+              your blocks mirror there automatically.
             </div>
           </>
         )}
@@ -204,11 +210,37 @@ function LoginContent() {
               </p>
             )}
 
-            <div style={{ padding: '9px 12px', borderRadius: 10, background: 'rgba(196,118,74,0.08)', border: '1px solid rgba(196,118,74,0.15)', fontSize: 11, color: T.textSoft, lineHeight: 1.6 }}>
-              <strong style={{ color: T.teal }}>Next step:</strong> Connect <strong>Calendar</strong>, <strong>Gmail</strong>, and <strong>Canvas</strong> from Settings to activate all 5 layers.
-            </div>
           </form>
         )}
+
+        {/* Feature list */}
+        <div style={{
+          marginTop: 22, padding: '14px 16px', borderRadius: 14,
+          background: 'rgba(196,118,74,0.06)',
+          border: '1px solid rgba(196,118,74,0.14)',
+          textAlign: 'left',
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.teal, marginBottom: 10 }}>
+            What you get
+          </div>
+          {[
+            ['⌘K', <>Type <em style={{ fontStyle: 'normal', color: T.text }}>&ldquo;block 90 min for AT3 friday 2pm&rdquo;</em> — done.</>],
+            ['🔁', <>1:1 Google Calendar mirror. Whatever you do here lands on your calendar.</>],
+            ['🎓', <>RMIT Canvas — assignments, quizzes, announcements, key dates.</>],
+            ['🧠', <>AI chief-of-staff — morning briefing, proactive nudges, one-tap reschedule.</>],
+            ['🎤', <>Voice command. Hold to speak.</>],
+          ].map(([icon, text], i) => (
+            <div key={i} style={{ display: 'flex', gap: 9, fontSize: 11.5, color: T.textSoft, lineHeight: 1.55, marginBottom: i === 4 ? 0 : 5 }}>
+              <span style={{ flexShrink: 0, width: 16, textAlign: 'center' }}>{icon}</span>
+              <span>{text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Pricing */}
+        <div style={{ fontSize: 11, color: T.textMuted, marginTop: 14, lineHeight: 1.6 }}>
+          <strong style={{ color: T.textSoft }}>7-day free trial</strong>, then $16.99/month. Cancel anytime.
+        </div>
 
         <div style={{ fontSize: 11, color: T.textMuted, marginTop: 18, lineHeight: 1.6 }}>
           By signing in, you agree to our{' '}
