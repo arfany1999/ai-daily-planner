@@ -7,6 +7,7 @@ const PUBLIC_PATHS = [
   '/api/auth',
   '/api/cron',
   '/api/webhooks',
+  '/api/_client-error',
   '/login',
   '/privacy',
   '/terms',

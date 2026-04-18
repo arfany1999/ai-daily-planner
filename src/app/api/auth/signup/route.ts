@@ -2,9 +2,25 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getOrCreateUser } from '@/lib/db';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: Request) {
   try {
+    // Rate limit by client IP — 10 signups per IP per hour. Prevents
+    // bot-spam account creation that would burn Supabase quota and pollute
+    // the trial pool.
+    const ip =
+      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || req.headers.get('x-real-ip')
+      || 'unknown';
+    const rl = rateLimit(`signup:${ip}`, 10, 60 * 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Too many signups from this network. Try again in an hour.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
+      );
+    }
+
     const { email, password, name } = await req.json();
 
     if (!email || !password) {

@@ -11,10 +11,18 @@ export const dynamic = 'force-dynamic';
  * Auth-gated so only signed-in users see their own subscription state.
  */
 export const GET = withAuth(async (_req, userId) => {
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim() || '';
+  const mode = secretKey.startsWith('sk_live_') ? 'live'
+    : secretKey.startsWith('sk_test_') ? 'test'
+    : 'unknown';
+
   const env = {
-    has_secret_key: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
+    has_secret_key: Boolean(secretKey),
+    stripe_mode: mode,                            // 'live' | 'test' | 'unknown'
+    live_mode: mode === 'live',                   // launch check — must be true before real users
     has_price_id: Boolean(process.env.STRIPE_PRICE_ID?.trim()),
     has_webhook_secret: Boolean(process.env.STRIPE_WEBHOOK_SECRET?.trim()),
+    has_payment_link: Boolean(process.env.STRIPE_PAYMENT_LINK?.trim()),
     has_nextauth_url: Boolean(process.env.NEXTAUTH_URL?.trim()),
     nextauth_url: process.env.NEXTAUTH_URL?.trim() || null,
   };
