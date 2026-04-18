@@ -13,7 +13,7 @@
  * a background fetch refreshes it. Single in-flight request per key.
  */
 
-import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { idbGet, idbSet, IDB_KEYS } from '@/lib/idb';
 
@@ -223,14 +223,16 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  return (
-    <Ctx.Provider value={{
-      settings, health, briefing, calEvents, plans, completions, ready,
-      refreshPlan, refreshCalendar, refreshHealth, invalidateAll,
-    }}>
-      {children}
-    </Ctx.Provider>
-  );
+  // Stable context value — only changes when one of the underlying slices
+  // actually changes. Without this memo, EVERY state update (even unrelated
+  // slices) would force every consumer to re-render.
+  const value = useMemo(() => ({
+    settings, health, briefing, calEvents, plans, completions, ready,
+    refreshPlan, refreshCalendar, refreshHealth, invalidateAll,
+  }), [settings, health, briefing, calEvents, plans, completions, ready,
+      refreshPlan, refreshCalendar, refreshHealth, invalidateAll]);
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function useAppData(): AppCache {
@@ -239,16 +241,25 @@ export function useAppData(): AppCache {
   return c;
 }
 
-// Convenience hook: plan for a specific date, loads on demand
+/**
+ * Plan for a specific date. Reads the slice from cache and fires a
+ * background load ONLY when the date isn't in the cache yet.
+ *
+ * Important: we keep `refreshPlan` out of the useEffect deps because
+ * the callback is memoized by the provider and including it here
+ * would couple us to any re-renders that update that identity. We
+ * depend only on `date` + the presence-check state via `hasPlan`.
+ */
 export function usePlan(date: string): { plan: Plan | null; done: Set<string> } {
   const ctx = useAppData();
+  const hasPlan = date in ctx.plans;
+  const refresh = ctx.refreshPlan;
   useEffect(() => {
-    if (!(date in ctx.plans)) {
-      ctx.refreshPlan(date);
-    }
-  }, [date, ctx]);
-  return {
+    if (!hasPlan) refresh(date);
+  }, [date, hasPlan, refresh]);
+
+  return useMemo(() => ({
     plan: ctx.plans[date] ?? null,
     done: ctx.completions[date] ?? new Set<string>(),
-  };
+  }), [ctx.plans, ctx.completions, date]);
 }

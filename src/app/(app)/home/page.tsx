@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { T, DOMAINS, inferDomainFromTitle, urgencyToDomain, melbSunTimes } from '@/lib/theme';
@@ -128,6 +128,19 @@ export default function HomePage() {
   const [wheelScroll, setWheelScroll] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const scrollRafRef = useRef<number | null>(null);
+
+  // rAF-throttled scroll handler — without this, a single swipe fires
+  // setWheelScroll ~60× per second, re-rendering every wheel card's
+  // transform each time. With rAF, we coalesce to 1 update per frame.
+  const onWheelScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (scrollRafRef.current !== null) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      setWheelScroll(el.scrollTop);
+    });
+  }, []);
 
   // Pull from shared cache — no per-mount fetches
   const { plan: dayPlan, done: doneToday } = usePlan(selectedDate);
@@ -448,7 +461,7 @@ export default function HomePage() {
           ) : (
             <div
               ref={listRef}
-              onScroll={(e) => setWheelScroll((e.currentTarget as HTMLDivElement).scrollTop)}
+              onScroll={onWheelScroll}
               style={{
                 height: expandedList ? 'auto' : 460,
                 maxHeight: expandedList ? 'none' : 460,
