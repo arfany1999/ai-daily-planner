@@ -232,7 +232,18 @@ export async function executeTool(userId: string, name: string, input: Record<st
           google_event_id: gcalId || undefined,
         };
         plan.timeline = [...plan.timeline, block].sort((a, b) => a.start_time.localeCompare(b.start_time));
-        await savePlan(userId, date, plan);
+
+        // Atomicity: if local save fails after GCal insert, roll back the GCal event
+        // so we never end up with an event on Google that has no local counterpart.
+        try {
+          await savePlan(userId, date, plan);
+        } catch (e) {
+          if (gcalId) {
+            try { await deleteGcalEvent(userId, gcalId); } catch { /* best-effort rollback */ }
+          }
+          throw e;
+        }
+
         return {
           ok: true,
           action: `created block ${block.id}${gcalId ? ' (synced to Google Calendar)' : ' (Google mirror skipped)'}`,

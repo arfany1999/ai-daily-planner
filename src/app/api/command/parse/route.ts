@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-handler';
 import { generateWithClaude } from '@/lib/claude';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 const TZ = 'Australia/Melbourne';
 
@@ -53,7 +54,11 @@ Time parsing hints (Melbourne timezone):
 - Only set start_time if explicit time given
 - Never invent a date if user said none → keep null`;
 
-export const POST = withAuth(async (req) => {
+export const POST = withAuth(async (req, userId) => {
+  const rl = rateLimit(`parse:${userId}`, RATE_LIMITS.parse.limit, RATE_LIMITS.parse.windowMs);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
   const { text, page } = await req.json() as { text: string; page?: string };
   if (!text || typeof text !== 'string') {
     return NextResponse.json({ error: 'Missing text' }, { status: 400 });

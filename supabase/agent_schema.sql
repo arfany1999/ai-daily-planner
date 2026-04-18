@@ -50,3 +50,15 @@ CREATE TABLE IF NOT EXISTS nudge_log (
   payload     JSONB
 );
 CREATE INDEX IF NOT EXISTS idx_nudge_log_user ON nudge_log (user_id, sent_at DESC);
+
+-- Stripe webhook idempotency — fills in when webhook fires; duplicate event.id
+-- inserts fail the unique constraint and we short-circuit.
+CREATE TABLE IF NOT EXISTS stripe_events (
+  event_id     TEXT PRIMARY KEY,
+  type         TEXT,
+  processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_stripe_events_processed ON stripe_events (processed_at DESC);
+
+-- Per-user timezone — default Melbourne if unset.
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS timezone TEXT;

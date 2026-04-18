@@ -1,6 +1,32 @@
 import { supabaseAdmin } from './supabase';
 import { encrypt, decrypt } from './encryption';
 
+/**
+ * External error sink — post errors to a webhook URL (configurable via
+ * ERROR_WEBHOOK_URL env). Fire-and-forget. Used alongside the existing
+ * Supabase `errors` table write. Keeps it lightweight — swap for Sentry
+ * when error volume justifies a full SDK.
+ */
+async function postToErrorWebhook(pathname: string, message: string, userId?: string) {
+  const url = process.env.ERROR_WEBHOOK_URL?.trim();
+  if (!url) return;
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pathname,
+        message: message.slice(0, 1000),
+        user_id: userId || null,
+        at: new Date().toISOString(),
+        env: process.env.VERCEL_ENV || 'unknown',
+      }),
+      // Don't block the caller — 2s timeout
+      signal: AbortSignal.timeout(2000),
+    });
+  } catch { /* non-fatal */ }
+}
+
 // Get or create user, return user id (uuid)
 export async function getOrCreateUser(email: string, name?: string, image?: string): Promise<string> {
   const { data: existing } = await supabaseAdmin
@@ -172,6 +198,8 @@ export async function logError(context: string, message: string, userId?: string
   } catch {
     console.error(`[${context}] ${message}`);
   }
+  // Fire-and-forget mirror to external webhook if configured.
+  void postToErrorWebhook(context, message, userId);
 }
 
 // Track usage

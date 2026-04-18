@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { T, DOMAINS, inferDomainFromTitle, urgencyToDomain, melbSunTimes } from '@/lib/theme';
 import DayTicker from '@/components/DayTicker';
 import SkippedBlockCard from '@/components/SkippedBlockCard';
+import OnboardingTour from '@/components/OnboardingTour';
 import { useAppData, usePlan } from '@/lib/app-cache';
 
 const TZ = 'Australia/Melbourne';
@@ -307,6 +308,7 @@ export default function HomePage() {
 
   return (
     <>
+      <OnboardingTour />
       <DayTicker selected={selectedDate} onSelect={setSelectedDate} daysBefore={7} daysAfter={60} />
 
       {/* Google Calendar connection banner — shows until user connects */}

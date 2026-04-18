@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/api-handler';
 import { getClaudeClient, isAiAvailable } from '@/lib/claude';
 import { AGENT_TOOLS, executeTool, logToolCall } from '@/lib/agent-tools';
 import { supabaseAdmin } from '@/lib/supabase';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 const TZ = 'Australia/Melbourne';
 const MAX_ITERATIONS = 8;
@@ -43,6 +44,14 @@ interface Message {
 export const POST = withAuth(async (req, userId) => {
   if (!isAiAvailable()) {
     return NextResponse.json({ error: 'AI unavailable' }, { status: 503 });
+  }
+
+  const rl = rateLimit(`agent:${userId}`, RATE_LIMITS.agent.limit, RATE_LIMITS.agent.windowMs);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'rate_limited', message: 'Too many requests. Try again in a moment.', retryAfterMs: rl.retryAfterMs },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
+    );
   }
 
   const body = await req.json() as { message?: string; conversation?: Message[]; source?: string };

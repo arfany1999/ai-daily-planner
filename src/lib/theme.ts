@@ -131,11 +131,17 @@ export const ACCENT_COLORS = [
 
 // Density helpers — runtime write to <html data-density>
 export type Density = 'comfortable' | 'cozy' | 'compact';
+function setCookie(name: string, value: string, days = 365) {
+  if (typeof document === 'undefined') return;
+  const exp = new Date(Date.now() + days * 86400000).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)};path=/;expires=${exp};samesite=lax`;
+}
 export function applyDensity(d: Density) {
   if (typeof document === 'undefined') return;
   if (d === 'comfortable') document.documentElement.removeAttribute('data-density');
   else document.documentElement.setAttribute('data-density', d);
   try { localStorage.setItem('cmd-density', d); } catch {}
+  setCookie('cmd-density', d);
 }
 export function getDensity(): Density {
   if (typeof document === 'undefined') return 'comfortable';
@@ -149,6 +155,7 @@ export function applyTheme(t: Theme) {
   if (t === 'auto') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', t);
   try { localStorage.setItem('cmd-theme', t); } catch {}
+  setCookie('cmd-theme', t);
 }
 export function getTheme(): Theme {
   if (typeof document === 'undefined') return 'auto';

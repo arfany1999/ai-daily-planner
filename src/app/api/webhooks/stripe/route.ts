@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { markUserPremium, renewUserPremium, revokeUserPremium, markPaymentFailed, getUserByStripeCustomer } from '@/lib/subscription';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,18 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
+
+  // Idempotency: Stripe retries on our timeout. Record event.id; skip duplicates.
+  // Requires table:
+  //   CREATE TABLE stripe_events (event_id TEXT PRIMARY KEY, type TEXT, processed_at TIMESTAMPTZ DEFAULT NOW());
+  try {
+    const { error: insErr } = await supabaseAdmin
+      .from('stripe_events')
+      .insert({ event_id: event.id, type: event.type });
+    if (insErr && (insErr.code === '23505' /* unique_violation */ || /duplicate/i.test(insErr.message))) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+  } catch { /* table missing — fall through and keep behaviour */ }
 
   switch (event.type) {
     case 'checkout.session.completed': {
