@@ -15,8 +15,8 @@ Look at `env.stripe_mode`. If it says `"live"`, you're done. If `"test"` or `"un
 **A. Get your live keys** (Stripe Dashboard — top-left toggle **"Test mode" → OFF**):
 1. Developers → API keys → "Reveal live key" → copy the `sk_live_...`
 2. Developers → Webhooks → find (or create) endpoint `https://aidaily.mrgren.store/api/webhooks/stripe` in **live** mode → reveal signing secret → copy the `whsec_...`
-3. Payment Links → create a new Payment Link in live mode for the $6.90/month price → copy the `https://buy.stripe.com/...` URL
-4. Products/Prices → copy the **live** price ID for $6.90/month (starts `price_...`)
+3. Payment Links → create a new Payment Link in live mode for the $6.99/month price → copy the `https://buy.stripe.com/...` URL
+4. Products/Prices → copy the **live** price ID for $6.99/month (starts `price_...`)
 
 **B. Put them in Vercel** (Settings → Environment Variables → edit each for **Production**):
 - `STRIPE_SECRET_KEY` → your `sk_live_...`
@@ -28,7 +28,7 @@ Look at `env.stripe_mode`. If it says `"live"`, you're done. If `"test"` or `"un
 ```
 git commit --allow-empty -m "flip Stripe to live mode" && git push
 ```
-Vercel auto-deploys. Re-check `/api/stripe/health` — `stripe_mode` should now read `"live"` and `price.amount` should be `690`.
+Vercel auto-deploys. Re-check `/api/stripe/health` — `stripe_mode` should now read `"live"` and `price.amount` should be `699`.
 
 ## 2. Google OAuth verification
 

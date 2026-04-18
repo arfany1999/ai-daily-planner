@@ -228,7 +228,7 @@ function LoginContent() {
 
         {/* Pricing */}
         <div style={{ fontSize: 11, color: T.textMuted, marginTop: 14, lineHeight: 1.6 }}>
-          <strong style={{ color: T.textSoft }}>7-day free trial</strong>, then $6.90/month. Cancel anytime.
+          <strong style={{ color: T.textSoft }}>7-day free trial</strong>, then $6.99/month. Cancel anytime.
         </div>
 
         <div style={{ fontSize: 11, color: T.textMuted, marginTop: 18, lineHeight: 1.6 }}>
