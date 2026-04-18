@@ -1,24 +1,42 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 
 function PaywallContent() {
   const [loading, setLoading] = useState(false);
+  const [autoFailed, setAutoFailed] = useState(false);
   const searchParams = useSearchParams();
   const cancelled = searchParams.get('cancelled');
+  const autoTriggeredRef = useRef(false);
 
   const handleSubscribe = async () => {
     setLoading(true);
+    setAutoFailed(false);
     try {
       const res = await fetch('/api/stripe/checkout', { method: 'POST' });
-      const { url } = await res.json();
-      if (url) window.location.href = url;
+      if (!res.ok) { setAutoFailed(true); setLoading(false); return; }
+      const { url, error } = await res.json() as { url?: string; error?: string };
+      if (url) { window.location.href = url; return; }
+      setAutoFailed(true);
+      console.error('Stripe checkout:', error);
+      setLoading(false);
     } catch {
+      setAutoFailed(true);
       setLoading(false);
     }
   };
+
+  // Auto-redirect to Stripe the moment the user lands here — unless they
+  // came back from Stripe via the cancel link (cancelled=1), in which
+  // case we let them choose to try again rather than bouncing in a loop.
+  useEffect(() => {
+    if (cancelled) return;
+    if (autoTriggeredRef.current) return;
+    autoTriggeredRef.current = true;
+    handleSubscribe();
+  }, [cancelled]);
 
   return (
     <div style={{
@@ -57,6 +75,18 @@ function PaywallContent() {
         {cancelled && (
           <div style={{ padding: '10px 14px', marginBottom: 20, background: 'rgba(212,96,74,0.1)', border: '1px solid rgba(212,96,74,0.2)', borderRadius: 10, fontSize: 13, color: '#D4604A' }}>
             Payment was cancelled. Your access remains locked until you subscribe.
+          </div>
+        )}
+
+        {!cancelled && loading && !autoFailed && (
+          <div style={{ padding: '10px 14px', marginBottom: 20, background: 'rgba(196,118,74,0.08)', border: '1px solid rgba(196,118,74,0.2)', borderRadius: 10, fontSize: 13, color: '#C4764A' }}>
+            Taking you to Stripe…
+          </div>
+        )}
+
+        {autoFailed && (
+          <div style={{ padding: '10px 14px', marginBottom: 20, background: 'rgba(212,96,74,0.1)', border: '1px solid rgba(212,96,74,0.2)', borderRadius: 10, fontSize: 13, color: '#D4604A' }}>
+            Couldn&apos;t open Stripe automatically. Tap the button below to try again.
           </div>
         )}
 

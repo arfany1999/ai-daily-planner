@@ -14,7 +14,9 @@ import { AppDataProvider } from '@/lib/app-cache';
 const CommandBar = dynamic(() => import('@/components/CommandBar'), { ssr: false });
 
 let subCache: { data: Record<string, unknown>; ts: number } | null = null;
-const SUB_TTL = 5 * 60 * 1000; // cache for 5 minutes
+// 60s TTL — short enough that trial expiry triggers a redirect within a minute,
+// long enough to avoid hammering /api/subscription on every tab switch.
+const SUB_TTL = 60 * 1000;
 
 function SubscriptionGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
