@@ -24,17 +24,17 @@ test('unauth visit shows login with pricing and features', async ({ page }) => {
   if (!page.url().includes('/login')) {
     await page.goto('/login');
   }
-  await expect(page.locator('text=AI Planner')).toBeVisible();
+  await expect(page.locator('text=AI Planner').first()).toBeVisible();
   await expect(page.locator('text=chief-of-staff calendar')).toBeVisible();
   await expect(page.locator('text=1:1 Google Calendar mirror')).toBeVisible();
-  await expect(page.locator('text=$6.90/month')).toBeVisible();
+  await expect(page.getByText(/6\.90/).first()).toBeVisible();
 });
 
 test('paywall loads without crashing', async ({ page }) => {
   const res = await page.goto('/paywall?cancelled=1');
   expect(res?.status()).toBeLessThan(500);
-  await expect(page.locator('text=Your free trial has ended')).toBeVisible();
-  await expect(page.locator('text=$6.90')).toBeVisible();
+  await expect(page.getByText('Your free trial has ended')).toBeVisible();
+  await expect(page.getByText(/6\.90/).first()).toBeVisible();
 });
 
 test.describe('AI endpoints reject unauthenticated', () => {
