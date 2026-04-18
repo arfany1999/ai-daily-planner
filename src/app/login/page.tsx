@@ -82,10 +82,7 @@ function LoginContent() {
 
         <div className="title-display" style={{ fontSize: 28, fontWeight: 800, color: T.text, letterSpacing: '-0.02em', marginBottom: 6 }}>AI Planner</div>
         <div style={{ fontSize: 12.5, color: T.textSoft, marginBottom: 22, lineHeight: 1.55 }}>
-          Your chief-of-staff calendar.<br />
-          <span style={{ color: T.textMuted }}>
-            Plans your day in plain English. Mirrors Google Calendar 1:1. Reads Canvas. Voice-ready.
-          </span>
+          Your chief-of-staff calendar.
         </div>
 
         {/* Tab switcher */}
@@ -213,25 +210,17 @@ function LoginContent() {
           </form>
         )}
 
-        {/* Feature list */}
-        <div style={{
-          marginTop: 22, padding: '14px 16px', borderRadius: 14,
-          background: 'rgba(196,118,74,0.06)',
-          border: '1px solid rgba(196,118,74,0.14)',
-          textAlign: 'left',
-        }}>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.teal, marginBottom: 10 }}>
-            What you get
-          </div>
+        {/* Feature list — short dot points */}
+        <div style={{ marginTop: 18, textAlign: 'left' }}>
           {[
-            ['⌘K', <>Type <em style={{ fontStyle: 'normal', color: T.text }}>&ldquo;block 90 min for AT3 friday 2pm&rdquo;</em> — done.</>],
-            ['🔁', <>1:1 Google Calendar mirror. Whatever you do here lands on your calendar.</>],
-            ['🎓', <>RMIT Canvas — assignments, quizzes, announcements, key dates.</>],
-            ['🧠', <>AI chief-of-staff — morning briefing, proactive nudges, one-tap reschedule.</>],
-            ['🎤', <>Voice command. Hold to speak.</>],
-          ].map(([icon, text], i) => (
-            <div key={i} style={{ display: 'flex', gap: 9, fontSize: 11.5, color: T.textSoft, lineHeight: 1.55, marginBottom: i === 4 ? 0 : 5 }}>
-              <span style={{ flexShrink: 0, width: 16, textAlign: 'center' }}>{icon}</span>
+            '1:1 Google Calendar mirror',
+            'Canvas deadlines + quizzes',
+            'AI briefing + proactive nudges',
+            'Voice + ⌘K commands',
+            'One-tap reschedule',
+          ].map((text, i, arr) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 11.5, color: T.textSoft, lineHeight: 1.4, marginBottom: i === arr.length - 1 ? 0 : 3 }}>
+              <span style={{ flexShrink: 0, width: 4, height: 4, borderRadius: '50%', background: T.teal }} />
               <span>{text}</span>
             </div>
           ))}
