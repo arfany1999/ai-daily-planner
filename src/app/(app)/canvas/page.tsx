@@ -138,6 +138,7 @@ const COURSE_COLORS = ['#4a6ef5', '#039BE5', '#8E24AA', '#0B8043', '#E67C73', '#
 export default function CanvasPage() {
   const [data, setData] = useState<CanvasData | null>(null);
   const [connected, setConnected] = useState<boolean | null>(null);
+  const [tokenExpired, setTokenExpired] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stale, setStale] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('all');
@@ -154,6 +155,7 @@ export default function CanvasPage() {
         const d = await r.json();
         if (cancelled) return;
         setConnected(d.connected !== false);
+        setTokenExpired(Boolean(d.token_expired));
         if (d.data) { setData(d.data); setStale(d.stale || false); }
         setLoading(false);
 
@@ -231,10 +233,14 @@ export default function CanvasPage() {
           border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20,
           padding: 28, textAlign: 'center',
         }}>
-          <div style={{ fontSize: 38, marginBottom: 14 }}>🎓</div>
-          <div style={{ fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 8 }}>Connect RMIT Canvas</div>
-          <div style={{ fontSize: 12, color: T.textSoft, lineHeight: 1.7, marginBottom: 20, maxWidth: 280, margin: '0 auto 20px' }}>
-            Go to rmit.instructure.com → Account → Settings → New Access Token
+          <div style={{ fontSize: 38, marginBottom: 14 }}>{tokenExpired ? '⚠️' : '🎓'}</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 8 }}>
+            {tokenExpired ? 'Canvas token expired' : 'Connect RMIT Canvas'}
+          </div>
+          <div style={{ fontSize: 12, color: T.textSoft, lineHeight: 1.7, marginBottom: 20, maxWidth: 300, margin: '0 auto 20px' }}>
+            {tokenExpired
+              ? 'Your Canvas token stopped working. Generate a new one and paste it below.'
+              : 'Go to rmit.instructure.com → Account → Settings → New Access Token'}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <input value={tokenInput} onChange={e => setTokenInput(e.target.value)}

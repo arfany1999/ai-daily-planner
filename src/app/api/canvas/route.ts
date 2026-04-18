@@ -28,11 +28,16 @@ export const GET = withAuth(async (req, userId) => {
     .select('canvas_token, canvas_connected')
     .eq('id', userId)
     .single();
-  const connected = Boolean(userRow?.canvas_token) || Boolean(userRow?.canvas_connected);
+  const hasToken = Boolean(userRow?.canvas_token);
+  const connected = hasToken && Boolean(userRow?.canvas_connected);
+  // If token is present but connected flag is false, the sync layer flipped
+  // it off after a 401/403 from Canvas — token expired or revoked.
+  const tokenExpired = hasToken && !userRow?.canvas_connected;
 
   if (!connected) {
     return NextResponse.json({
       connected: false,
+      token_expired: tokenExpired,
       data: null,
       stale: false,
       cached_at: null,

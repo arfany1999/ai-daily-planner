@@ -5,9 +5,23 @@ import ServiceWorkerRegistrar from '@/components/ServiceWorker';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'AI Planner',
-  description: 'Your intelligent daily planner',
+  title: 'AI Planner — Your chief-of-staff calendar',
+  description: 'Plain-language planning that mirrors Google Calendar 1:1, reads RMIT Canvas, and defends your day. Voice-ready. 7-day free trial.',
   manifest: '/manifest.json',
+  metadataBase: new URL('https://aidaily.mrgren.store'),
+  openGraph: {
+    title: 'AI Planner — Your chief-of-staff calendar',
+    description: '1:1 Google Calendar mirror. RMIT Canvas. AI briefings + proactive nudges. Voice-ready.',
+    url: 'https://aidaily.mrgren.store',
+    siteName: 'AI Planner',
+    locale: 'en_AU',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'AI Planner — Your chief-of-staff calendar',
+    description: '1:1 Google Calendar mirror. RMIT Canvas. AI briefings + voice commands.',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
