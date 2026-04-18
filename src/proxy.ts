@@ -17,6 +17,12 @@ const PUBLIC_PATHS = [
   '/sw.js',
   '/manifest.json',
   '/icons',
+  '/opengraph-image',   // Next.js auto-generated social preview
+  '/twitter-image',
+  '/apple-icon',
+  '/icon',
+  '/robots.txt',
+  '/sitemap.xml',
 ];
 
 // API paths that require auth but should never be subscription-gated
