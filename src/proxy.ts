@@ -8,6 +8,7 @@ const PUBLIC_PATHS = [
   '/api/cron',
   '/api/webhooks',
   '/api/_client-error',
+  '/api/ping',
   '/login',
   '/privacy',
   '/terms',

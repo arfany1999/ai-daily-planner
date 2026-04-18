@@ -4,19 +4,31 @@ Operational tasks that need you at the console — code is all in place.
 
 ## 1. Stripe in live mode
 
+**Check current mode** (sign in to the app first so the session cookie is set, then in the same browser hit):
+
 ```
-curl -s https://aidaily.mrgren.store/api/stripe/health \
-  -H "Cookie: <your session cookie>" | jq .env
+https://aidaily.mrgren.store/api/stripe/health
 ```
 
-Expect `"stripe_mode": "live"` and `"live_mode": true`.
+Look at `env.stripe_mode`. If it says `"live"`, you're done. If `"test"` or `"unknown"`, flip it:
 
-If `test`: in Vercel → Settings → Environment Variables, replace:
-- `STRIPE_SECRET_KEY` → `sk_live_...` (Stripe Dashboard → Developers → API keys → "Reveal live key")
-- `STRIPE_WEBHOOK_SECRET` → matching `whsec_...` from the **live** webhook endpoint
-- `STRIPE_PAYMENT_LINK` → live-mode Payment Link URL
+**A. Get your live keys** (Stripe Dashboard — top-left toggle **"Test mode" → OFF**):
+1. Developers → API keys → "Reveal live key" → copy the `sk_live_...`
+2. Developers → Webhooks → find (or create) endpoint `https://aidaily.mrgren.store/api/webhooks/stripe` in **live** mode → reveal signing secret → copy the `whsec_...`
+3. Payment Links → create a new Payment Link in live mode for the $6.90/month price → copy the `https://buy.stripe.com/...` URL
+4. Products/Prices → copy the **live** price ID for $6.90/month (starts `price_...`)
 
-Redeploy after changing env.
+**B. Put them in Vercel** (Settings → Environment Variables → edit each for **Production**):
+- `STRIPE_SECRET_KEY` → your `sk_live_...`
+- `STRIPE_WEBHOOK_SECRET` → your live `whsec_...`
+- `STRIPE_PAYMENT_LINK` → the live Payment Link URL
+- `STRIPE_PRICE_ID` → live price ID
+
+**C. Redeploy:**
+```
+git commit --allow-empty -m "flip Stripe to live mode" && git push
+```
+Vercel auto-deploys. Re-check `/api/stripe/health` — `stripe_mode` should now read `"live"` and `price.amount` should be `690`.
 
 ## 2. Google OAuth verification
 
@@ -38,28 +50,51 @@ Submit for verification → allow 2-4 weeks. While pending, testing users still 
 
 ## 3. Uptime monitor
 
-Pick one (free):
-- **Better Uptime** (betterstack.com) — 10 monitors free
-- **UptimeRobot** — 50 monitors free
-- **Vercel Analytics** — already on, but it's observability not uptime
+Public liveness probe lives at `https://aidaily.mrgren.store/api/ping` (no auth, no DB — pure edge health). Use that, **not** `/api/health` (which is auth-gated and leaks state).
 
-Configure:
-- Monitor URL: `https://aidaily.mrgren.store/api/health`
-- Interval: 5 min
-- Alert via: email + SMS (or Slack/Discord webhook)
-- Expected status: 200
+Pick one (free tier is enough):
+- **UptimeRobot** (https://uptimerobot.com) — 50 monitors free, 5-min interval
+- **Better Stack / Better Uptime** (https://betterstack.com/better-uptime) — 10 monitors free, 30-sec interval
+
+**UptimeRobot setup (copy-paste):**
+1. Sign up → "Add New Monitor"
+2. Monitor Type: `HTTP(s)`
+3. Friendly Name: `AI Planner`
+4. URL: `https://aidaily.mrgren.store/api/ping`
+5. Monitoring Interval: `5 minutes`
+6. Alert Contacts: your email (add SMS if you want pages)
+7. Keyword (optional, under Advanced): `"status":"ok"` — alerts if body ever stops containing this
+
+Expected response: `200 {"status":"ok","ts":...}` with `cache-control: no-store`.
+
+**Better Stack setup:** same URL, set "Expected keyword" to `ok` under Advanced.
 
 ## 4. ERROR_WEBHOOK_URL (optional)
 
-Set this in Vercel env to pipe `logError` + client boundary crashes to Discord/Slack/Zapier:
+Pipes `logError(...)` + client error boundary crashes to Slack / Discord / generic JSON webhook. Auto-detects format from the URL.
 
-```
-ERROR_WEBHOOK_URL=https://hooks.slack.com/services/XXX
-# or
-ERROR_WEBHOOK_URL=https://discord.com/api/webhooks/XXX
-```
+**Slack:**
+1. https://api.slack.com/apps → Create New App → From scratch → pick workspace
+2. Features → "Incoming Webhooks" → toggle on → "Add New Webhook to Workspace" → pick channel
+3. Copy the `https://hooks.slack.com/services/...` URL
+4. Vercel → Settings → Environment Variables → add:
+   ```
+   ERROR_WEBHOOK_URL=https://hooks.slack.com/services/T.../B.../xxx
+   ```
+5. Redeploy
 
-Receives JSON: `{ pathname, message, user_id, at, env }`.
+**Discord:**
+1. Channel → gear icon → Integrations → Webhooks → New Webhook → copy URL
+2. Vercel → same env var:
+   ```
+   ERROR_WEBHOOK_URL=https://discord.com/api/webhooks/.../...
+   ```
+3. Redeploy
+
+**Generic** (Zapier, your own endpoint): any other URL receives raw JSON:
+`{ pathname, message, user_id, at, env }`.
+
+The code auto-detects Slack/Discord by URL and formats the payload accordingly — no extra config needed.
 
 ## 5. Sanity checks
 

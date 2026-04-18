@@ -10,18 +10,58 @@ import { encrypt, decrypt } from './encryption';
 async function postToErrorWebhook(pathname: string, message: string, userId?: string) {
   const url = process.env.ERROR_WEBHOOK_URL?.trim();
   if (!url) return;
+  const envTag = process.env.VERCEL_ENV || 'local';
+  const short = message.slice(0, 1000);
   try {
+    // Slack incoming webhook
+    if (url.includes('hooks.slack.com/')) {
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: `:rotating_light: *AI Planner* error in \`${pathname}\` (${envTag})`,
+          blocks: [
+            { type: 'section', text: { type: 'mrkdwn', text: `:rotating_light: *AI Planner* (\`${envTag}\`)\n*Path:* \`${pathname}\`${userId ? `\n*User:* \`${userId}\`` : ''}` } },
+            { type: 'section', text: { type: 'mrkdwn', text: `\`\`\`${short}\`\`\`` } },
+          ],
+        }),
+        signal: AbortSignal.timeout(2000),
+      });
+      return;
+    }
+    // Discord webhook
+    if (url.includes('discord.com/api/webhooks/') || url.includes('discordapp.com/api/webhooks/')) {
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: 'AI Planner',
+          embeds: [{
+            title: `Error in ${pathname}`,
+            description: '```' + short + '```',
+            color: 0xC4764A,
+            fields: [
+              { name: 'env', value: envTag, inline: true },
+              ...(userId ? [{ name: 'user', value: userId, inline: true }] : []),
+            ],
+            timestamp: new Date().toISOString(),
+          }],
+        }),
+        signal: AbortSignal.timeout(2000),
+      });
+      return;
+    }
+    // Generic JSON
     await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         pathname,
-        message: message.slice(0, 1000),
+        message: short,
         user_id: userId || null,
         at: new Date().toISOString(),
-        env: process.env.VERCEL_ENV || 'unknown',
+        env: envTag,
       }),
-      // Don't block the caller — 2s timeout
       signal: AbortSignal.timeout(2000),
     });
   } catch { /* non-fatal */ }
