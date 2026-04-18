@@ -265,7 +265,7 @@ export default function SettingsPage() {
                   <strong>{sub.trialDaysLeft} day{sub.trialDaysLeft === 1 ? '' : 's'}</strong> left in your free trial.
                 </div>
                 <div style={{ fontSize: 12, color: '#6b6358', marginBottom: 16, lineHeight: 1.6 }}>
-                  $16.99/month after trial ends. Cancel anytime.
+                  $6.90/month after trial ends. Cancel anytime.
                 </div>
                 <button onClick={handleCheckout} disabled={checkoutLoading} style={{
                   width: '100%', padding: '13px 0', borderRadius: 12, border: 'none',
@@ -273,7 +273,7 @@ export default function SettingsPage() {
                   color: '#fff', fontSize: 14, fontWeight: 700, cursor: checkoutLoading ? 'not-allowed' : 'pointer',
                   boxShadow: '0 4px 16px rgba(124,58,237,0.3)',
                 }}>
-                  {checkoutLoading ? 'Redirecting...' : 'Subscribe — $16.99/month'}
+                  {checkoutLoading ? 'Redirecting...' : 'Subscribe — $6.90/month'}
                 </button>
               </>
             ) : (
@@ -285,7 +285,7 @@ export default function SettingsPage() {
                   color: '#fff', fontSize: 14, fontWeight: 700, cursor: checkoutLoading ? 'not-allowed' : 'pointer',
                   boxShadow: '0 4px 16px rgba(124,58,237,0.3)',
                 }}>
-                  {checkoutLoading ? 'Redirecting...' : 'Start for $16.99/month'}
+                  {checkoutLoading ? 'Redirecting...' : 'Start for $6.90/month'}
                 </button>
               </>
             )}

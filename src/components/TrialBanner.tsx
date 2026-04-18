@@ -53,7 +53,7 @@ export default function TrialBanner({ daysLeft }: { daysLeft: number }) {
             opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? '...' : 'Subscribe — $16.99/mo'}
+          {loading ? '...' : 'Subscribe — $6.90/mo'}
         </button>
         <button
           onClick={() => setDismissed(true)}

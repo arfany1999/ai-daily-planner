@@ -100,17 +100,17 @@ function PaywallContent() {
         }}>
           <div style={{ fontSize: 13, color: '#C4764A', fontWeight: 600, marginBottom: 4 }}>AI Daily Premium</div>
           <div style={{ fontSize: 32, fontWeight: 700, color: '#E8E0D8', letterSpacing: '-1px' }}>
-            $16.99
+            $6.90
             <span style={{ fontSize: 15, fontWeight: 400, color: '#8A7D70' }}>/month</span>
           </div>
           <div style={{ fontSize: 12, color: '#8A7D70', marginTop: 4 }}>Billed monthly. Cancel anytime.</div>
           <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'left' }}>
             {[
-              'AI-generated daily schedule',
-              'Google Calendar + Gmail sync',
-              'Canvas deadlines + announcements',
-              'Cross-referenced intelligence alerts',
-              'Real-time updates via webhooks',
+              '1:1 Google Calendar mirror',
+              'Canvas deadlines + quizzes',
+              'AI briefing + proactive nudges',
+              'Voice + ⌘K commands',
+              'One-tap reschedule',
             ].map((f) => (
               <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#D4CBC0' }}>
                 <span style={{ color: '#C4764A', fontSize: 14 }}>✓</span> {f}
@@ -136,7 +136,7 @@ function PaywallContent() {
             transition: 'background 0.3s ease',
           }}
         >
-          {loading ? 'Redirecting to Stripe...' : 'Start for $16.99/month'}
+          {loading ? 'Redirecting to Stripe...' : 'Start for $6.90/month'}
         </button>
 
         <div style={{ fontSize: 11, color: '#6B6058', marginTop: 14, lineHeight: 1.6 }}>
