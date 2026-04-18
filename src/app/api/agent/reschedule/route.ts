@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-handler';
 import { supabaseAdmin } from '@/lib/supabase';
-import { generateWithClaude } from '@/lib/claude';
+import { generateWithClaude, isAiAvailable } from '@/lib/claude';
 
 const TZ = 'Australia/Melbourne';
 
@@ -37,6 +37,15 @@ Constraints:
 
 export const POST = withAuth(async (req, userId) => {
   const cmd = await req.json() as Cmd;
+
+  if (!isAiAvailable()) {
+    return NextResponse.json({
+      summary: `AI disabled — can't compute a reschedule diff.`,
+      proposal: '(AI offline. Move the block manually via ⌘K or Google Calendar.)',
+      reason: 'AI unavailable',
+      changes: [], ai_unavailable: true,
+    }, { status: 503 });
+  }
   const today = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
   const targetDate = cmd.date || today;
 

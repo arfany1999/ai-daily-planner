@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-handler';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logError } from '@/lib/db';
-import { generateWithClaude } from '@/lib/claude';
+import { generateWithClaude, isAiAvailable } from '@/lib/claude';
 
 const TIMEZONE = 'Australia/Melbourne';
 
@@ -14,6 +14,14 @@ function getTomorrowDate(): string {
 
 export const POST = withAuth(async (_req, userId) => {
   const tomorrow = getTomorrowDate();
+
+  if (!isAiAvailable()) {
+    return NextResponse.json({
+      ai_unavailable: true,
+      message: 'AI is disabled. Add tomorrow\'s blocks manually via ⌘K or Google Calendar.',
+      plan: null,
+    }, { status: 503 });
+  }
 
   try {
     // Delete cached to force regeneration

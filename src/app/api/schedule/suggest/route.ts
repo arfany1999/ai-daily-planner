@@ -2,9 +2,12 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-handler';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logError, getUserContext } from '@/lib/db';
-import { generateWithClaude } from '@/lib/claude';
+import { generateWithClaude, isAiAvailable } from '@/lib/claude';
 
 export const POST = withAuth(async (_req, userId) => {
+  if (!isAiAvailable()) {
+    return NextResponse.json({ ai_unavailable: true, suggestions: [], message: 'AI is disabled.' }, { status: 503 });
+  }
   try {
     const userContext = await getUserContext(userId);
 

@@ -168,7 +168,9 @@ export default function CommandBar() {
     if (parsed.intent === 'jump' && parsed.route) { router.push(parsed.route); closeBar(); return; }
     if (parsed.intent === 'reschedule') { proposeReschedule(parsed); return; }
 
-    // Route everything else (schedule/delete/complete/ask/search) through the agent
+    // Route everything else (schedule/delete/complete/ask/search) through the agent.
+    // If the agent is offline (AI unavailable), fall back to the lightweight
+    // /api/command/execute route which does plain DB writes without Claude.
     setExecuting(true);
     setMode('executing');
     try {
@@ -177,19 +179,43 @@ export default function CommandBar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: parsed.raw, source: 'commandbar' }),
       });
-      const d = await res.json() as { text?: string; actions?: { tool: string; input: Record<string, unknown>; result: { ok: boolean; action?: string; error?: string } }[]; error?: string };
-      if (d.error) {
-        setStreamText(`Error: ${d.error}`);
-        setMode('error');
+
+      // AI-unavailable fallback: for schedule/complete/delete we can still
+      // write to DB + Google Calendar without the LLM. For ask, nothing to do.
+      if (res.status === 503) {
+        if (['schedule', 'complete', 'delete'].includes(parsed.intent) && parsed.title) {
+          const r2 = await fetch('/api/command/execute', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(parsed),
+          });
+          const d2 = await r2.json() as { success?: boolean; error?: string };
+          if (d2.success) {
+            setStreamText(`✓ ${parsed.intent === 'schedule' ? 'created' : parsed.intent} "${parsed.title}" (AI offline — used local executor)`);
+            setMode('ready');
+            window.dispatchEvent(new CustomEvent('cmd-data-changed'));
+          } else {
+            setStreamText(`AI offline. Local fallback failed: ${d2.error || 'unknown'}`);
+            setMode('error');
+          }
+        } else {
+          setStreamText('AI is offline. For schedule/complete/delete I can still act locally; for questions or reschedules, please try again when AI is back.');
+          setMode('error');
+        }
       } else {
-        const actionsText = (d.actions || [])
-          .filter(a => a.result?.ok && a.result.action)
-          .map(a => `✓ ${a.result.action}`)
-          .join('\n');
-        setStreamText([d.text || '', actionsText].filter(Boolean).join('\n\n'));
-        setMode('ready');
-        if (d.actions && d.actions.length > 0) {
-          window.dispatchEvent(new CustomEvent('cmd-data-changed'));
+        const d = await res.json() as { text?: string; actions?: { tool: string; input: Record<string, unknown>; result: { ok: boolean; action?: string; error?: string } }[]; error?: string };
+        if (d.error) {
+          setStreamText(`Error: ${d.error}`);
+          setMode('error');
+        } else {
+          const actionsText = (d.actions || [])
+            .filter(a => a.result?.ok && a.result.action)
+            .map(a => `✓ ${a.result.action}`)
+            .join('\n');
+          setStreamText([d.text || '', actionsText].filter(Boolean).join('\n\n'));
+          setMode('ready');
+          if (d.actions && d.actions.length > 0) {
+            window.dispatchEvent(new CustomEvent('cmd-data-changed'));
+          }
         }
       }
     } catch (e) {

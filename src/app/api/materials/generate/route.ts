@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-handler';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logError } from '@/lib/db';
-import { generateWithClaude } from '@/lib/claude';
+import { generateWithClaude, isAiAvailable } from '@/lib/claude';
 
 export const maxDuration = 60;
 
@@ -56,6 +56,9 @@ function currentSemesterWeek(): number {
 }
 
 export const POST = withAuth(async (req, userId) => {
+  if (!isAiAvailable()) {
+    return NextResponse.json({ ai_unavailable: true, message: 'AI is disabled. Materials generation is offline.' }, { status: 503 });
+  }
   try {
     // Allow caller to request specific course/week, or generate all
     let body: { course?: string; week?: number; forceAll?: boolean } = {};

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-handler';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logError, getUserContext } from '@/lib/db';
-import { generateWithClaude } from '@/lib/claude';
+import { generateWithClaude, isAiAvailable } from '@/lib/claude';
 
 const TIMEZONE = 'Australia/Melbourne';
 
@@ -36,6 +36,14 @@ export const GET = withAuth(async (_req, userId) => {
       return NextResponse.json({ briefing: cached.briefing, cached: true, stale: false }, { headers: { "Cache-Control": "private, max-age=120, stale-while-revalidate=600" } });
     }
 
+    // AI offline — serve stale cache if any, otherwise empty (never 500)
+    if (!isAiAvailable()) {
+      return NextResponse.json({
+        briefing: cached?.briefing ?? null,
+        cached: !!cached, stale: true, ai_unavailable: true,
+      }, { headers: { "Cache-Control": "private, max-age=30" } });
+    }
+
     // Generate fresh briefing
     const briefing = await generateBriefing(userId);
 
@@ -63,7 +71,8 @@ export const GET = withAuth(async (_req, userId) => {
       return NextResponse.json({ briefing: stale.briefing, cached: true, stale: true });
     }
 
-    return NextResponse.json({ error: 'Failed to generate briefing', message: msg }, { status: 500 });
+    // Never 500 — frontend gracefully renders no briefing
+    return NextResponse.json({ briefing: null, cached: false, stale: true, ai_unavailable: true, message: msg });
   }
 });
 

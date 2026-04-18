@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-handler';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logError, getUserContext } from '@/lib/db';
-import { generateWithClaude } from '@/lib/claude';
+import { generateWithClaude, isAiAvailable } from '@/lib/claude';
 
 const TIMEZONE = 'Australia/Melbourne';
 
@@ -12,6 +12,13 @@ function getTodayDate(): string {
 
 export const POST = withAuth(async (_req, userId) => {
   const today = getTodayDate();
+
+  if (!isAiAvailable()) {
+    return NextResponse.json({
+      ai_unavailable: true, briefing: null,
+      message: 'AI is disabled. Set ANTHROPIC_API_KEY to re-enable briefings.',
+    }, { status: 503 });
+  }
 
   try {
     const userContext = await getUserContext(userId);

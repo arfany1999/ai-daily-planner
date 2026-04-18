@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-handler';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logError, getUserContext } from '@/lib/db';
-import { generateWithClaude } from '@/lib/claude';
+import { generateWithClaude, isAiAvailable } from '@/lib/claude';
 
 const TIMEZONE = 'Australia/Melbourne';
 
@@ -35,6 +35,14 @@ export const GET = withAuth(async (_req, userId) => {
 
     if (cached && isFresh(cached.created_at, 4)) {
       return NextResponse.json({ todo: cached.todo, cached: true, stale: false });
+    }
+
+    // AI offline — serve stale cache or empty, never 500
+    if (!isAiAvailable()) {
+      return NextResponse.json({
+        todo: cached?.todo ?? null,
+        cached: !!cached, stale: true, ai_unavailable: true,
+      });
     }
 
     const todo = await generateTodo(userId, tomorrow);

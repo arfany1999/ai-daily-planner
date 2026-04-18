@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api-handler';
 import { supabaseAdmin } from '@/lib/supabase';
-import { generateWithClaude } from '@/lib/claude';
+import { generateWithClaude, isAiAvailable } from '@/lib/claude';
 
 const TZ = 'Australia/Melbourne';
 
@@ -32,6 +32,13 @@ Return: { "timeline": [ ... ] } — the full ordered list of blocks (HH:MM 24h).
 
 export const POST = withAuth(async (req, userId) => {
   const cmd = await req.json() as Cmd;
+
+  if (!isAiAvailable()) {
+    return NextResponse.json({
+      success: false, ai_unavailable: true,
+      error: 'AI is disabled. Move the block manually.',
+    }, { status: 503 });
+  }
   const today = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
   const targetDate = cmd.date || today;
 
