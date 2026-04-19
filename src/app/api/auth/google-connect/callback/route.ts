@@ -10,7 +10,6 @@ import { google } from 'googleapis';
 import { supabaseAdmin } from '@/lib/supabase';
 import { encrypt } from '@/lib/encryption';
 import { syncCalendarToCache } from '@/lib/gcal-sync';
-import { syncEmailToCache } from '@/lib/gmail-sync';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,9 +51,8 @@ export async function GET(req: Request) {
       google_refresh_token: encrypt(refresh_token),
     }).eq('id', userId);
 
-    // Kick off immediate calendar + Gmail sync in the background
+    // Kick off immediate calendar sync in the background
     void syncCalendarToCache(userId);
-    void syncEmailToCache(userId);
 
     return NextResponse.redirect(`${base}/settings?google=connected`);
   } catch (err) {

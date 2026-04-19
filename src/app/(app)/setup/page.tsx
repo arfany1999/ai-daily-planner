@@ -51,7 +51,17 @@ export default function SetupPage() {
   const [gymEnd, setGymEnd] = useState('21:00');
 
   const [saving, setSaving] = useState(false);
+  const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
   const firstName = session?.user?.name?.split(' ')[0] || 'there';
+
+  // Check whether Google Calendar is already connected (email/password users land
+  // here without tokens; Google-signed-in users already have them).
+  useEffect(() => {
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((d) => setGoogleConnected(d?.checks?.google?.status === 'ok'))
+      .catch(() => setGoogleConnected(false));
+  }, []);
 
   // Auto-validate Canvas token
   const validateCanvas = useCallback(async (token: string) => {
@@ -142,22 +152,36 @@ export default function SetupPage() {
               marginBottom: 6,
             }}>Welcome, {firstName}!</div>
             <div style={{ fontSize: 13, color: T.textSoft, fontWeight: 300, lineHeight: 1.7, marginBottom: 24 }}>
-              Your Google Calendar and Gmail are already connected. Optionally connect your university below.
+              {googleConnected
+                ? 'Your Google Calendar is connected. Optionally connect your university below.'
+                : 'Connect your Google Calendar so AI Planner can mirror your schedule. Optionally connect your university below.'}
             </div>
 
-            {/* Google — already connected */}
+            {/* Google — Connect or Connected */}
             <div style={{
-              padding: '14px 18px', background: T.card, border: `1px solid ${T.green}20`,
-              borderRadius: 12, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '14px 18px', background: T.card,
+              border: `1px solid ${googleConnected ? T.green + '20' : T.tealBrd}`,
+              borderRadius: 12, marginBottom: 10,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{ fontSize: 20 }}>📅</span>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Google Calendar & Gmail</div>
-                  <div style={{ fontSize: 11, color: T.textSoft, fontWeight: 300 }}>{session?.user?.email}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Google Calendar</div>
+                  <div style={{ fontSize: 11, color: T.textSoft, fontWeight: 300 }}>
+                    {googleConnected ? (session?.user?.email || 'Connected') : '1:1 mirror of your schedule'}
+                  </div>
                 </div>
               </div>
-              <span style={{ fontSize: 10, fontWeight: 600, color: T.green, background: T.green + '15', padding: '4px 10px', borderRadius: 6 }}>✓ Connected</span>
+              {googleConnected ? (
+                <span style={{ fontSize: 10, fontWeight: 600, color: T.green, background: T.green + '15', padding: '4px 10px', borderRadius: 6 }}>✓ Connected</span>
+              ) : (
+                <a href="/api/auth/google-connect" style={{
+                  fontSize: 11, fontWeight: 600, color: '#fff', textDecoration: 'none',
+                  background: `linear-gradient(135deg,${T.tealDk},${T.teal})`,
+                  padding: '6px 12px', borderRadius: 7,
+                }}>Connect</a>
+              )}
             </div>
 
             {/* Canvas — optional toggle */}
@@ -309,9 +333,13 @@ export default function SetupPage() {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16 }}>📅</span>
-                  <span style={{ fontSize: 13, color: T.text }}>Google Calendar & Gmail</span>
+                  <span style={{ fontSize: 13, color: T.text }}>Google Calendar</span>
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 600, color: T.green, background: T.green + '15', padding: '3px 8px', borderRadius: 5 }}>✓ Connected</span>
+                <span style={{
+                  fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 5,
+                  color: googleConnected ? T.green : T.textMuted,
+                  background: googleConnected ? T.green + '15' : T.bg3,
+                }}>{googleConnected ? '✓ Connected' : 'Not connected'}</span>
               </div>
 
               <div style={{

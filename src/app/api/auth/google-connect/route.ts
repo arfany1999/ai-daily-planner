@@ -1,7 +1,7 @@
 /**
  * GET /api/auth/google-connect
- * Initiates a Google OAuth flow to connect Calendar + Gmail
- * for users who signed up with email/password.
+ * Initiates a Google OAuth flow to connect Google Calendar for the signed-in
+ * user. Used after email/password signup so users can mirror their schedule.
  */
 
 import { NextResponse } from 'next/server';
@@ -29,7 +29,6 @@ export async function GET() {
       'email',
       'profile',
       'https://www.googleapis.com/auth/calendar',
-      'https://www.googleapis.com/auth/gmail.readonly',
     ],
   });
 

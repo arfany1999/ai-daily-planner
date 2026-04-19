@@ -164,8 +164,8 @@ export default function SettingsPage() {
     const params = new URLSearchParams(window.location.search);
     const g = params.get('google');
     if (g === 'connected') {
-      setConns((c) => ({ ...c, google: true, gmail: true }));
-      setGoogleToast('Google Calendar & Gmail connected!');
+      setConns((c) => ({ ...c, google: true }));
+      setGoogleToast('Google Calendar connected!');
       window.history.replaceState({}, '', '/settings');
       setTimeout(() => setGoogleToast(''), 4000);
     } else if (g === 'denied') {
@@ -396,10 +396,10 @@ export default function SettingsPage() {
           padding: 18, marginBottom: 12,
         }}>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.blue, marginBottom: 8 }}>
-            Connect Google Calendar &amp; Gmail
+            Connect Google Calendar
           </div>
           <div style={{ fontSize: 12, color: T.textSoft, fontWeight: 300, marginBottom: 14, lineHeight: 1.6 }}>
-            Grant access to your Google Calendar and Gmail so AI Daily can build your schedule and surface important emails.
+            Grant calendar access so AI Planner mirrors your schedule and every block you create lands in Google Calendar automatically. Nothing else is read.
           </div>
           <a href="/api/auth/google-connect" style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
