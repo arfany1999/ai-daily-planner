@@ -343,22 +343,18 @@ export default function HomePage() {
               AI Planner mirrors your schedule 1:1 with Google. Every block you create here lands on your calendar.
             </div>
           </div>
-          <button
-            onClick={async () => {
-              const r = await fetch('/api/auth/google-connect', { method: 'POST' }).catch(() => null);
-              if (r) { const { url } = await r.json().catch(() => ({ url: null })); if (url) { window.location.href = url; return; } }
-              // Fallback: re-auth via NextAuth to grant calendar scope
-              window.location.href = '/api/auth/signin/google';
-            }}
+          <a
+            href="/api/auth/google-connect"
             style={{
               flexShrink: 0,
               padding: '8px 14px', borderRadius: 9,
               background: `linear-gradient(135deg, var(--teal-dk), var(--teal-lt))`,
-              color: '#fff', border: 'none',
+              color: '#fff', textDecoration: 'none',
               fontSize: 12, fontWeight: 700, cursor: 'pointer',
               boxShadow: '0 4px 12px var(--teal-glow)',
+              display: 'inline-block',
             }}
-          >Connect</button>
+          >Connect</a>
         </div>
       )}
 
