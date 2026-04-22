@@ -133,7 +133,7 @@ export default function WeeklyPage() {
         </div>
         {!loading && (
           <div style={{ marginTop: 16, padding: '12px 16px', background: T.glass, borderRadius: 10, border: `1px solid ${T.glassBrd}`, fontSize: 11, color: T.textMuted, fontWeight: 300 }}>
-            Demo data shown. Sign in with Google and connect your calendar to see real briefings.
+            Demo data shown. Connect your Google Calendar in Settings to see real briefings.
           </div>
         )}
       </div>

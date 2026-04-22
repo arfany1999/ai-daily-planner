@@ -87,7 +87,7 @@ function LoginContent() {
         {/* Error from URL */}
         {error && (
           <div style={{ padding: '10px 14px', marginBottom: 16, background: 'rgba(212,96,74,0.1)', border: '1px solid rgba(212,96,74,0.2)', borderRadius: 10, fontSize: 12, color: T.red }}>
-            {error === 'OAuthAccountNotLinked' ? 'This email is linked to another sign-in method.' : 'Something went wrong. Please try again.'}
+            Something went wrong. Please try again.
           </div>
         )}
 
