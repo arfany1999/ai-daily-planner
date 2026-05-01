@@ -4,7 +4,7 @@ import { decrypt } from './encryption';
 const CANVAS_BASE = 'https://rmit.instructure.com/api/v1';
 const FETCH_TIMEOUT_MS = 10000;
 const MAX_PAGES = 10;
-const ANNOUNCEMENT_DAYS = 90;
+const ANNOUNCEMENT_DAYS = 180;
 const EVENT_FUTURE_DAYS = 120;
 const EVENT_PAST_DAYS = 30;
 
@@ -207,11 +207,24 @@ export interface CanvasModuleItem {
   external_url?: string | null;
 }
 
+export interface CanvasDiscussion {
+  id: number;
+  title: string;
+  message: string;
+  posted_at: string;
+  course_id: number;
+  course_name?: string;
+  html_url: string;
+  author: { display_name: string };
+  pinned: boolean;
+}
+
 export interface CanvasData {
   courses: CanvasCourse[];
   assignments: CanvasAssignment[];
   quizzes: CanvasQuiz[];
   announcements: CanvasAnnouncement[];
+  discussions: CanvasDiscussion[];
   events: CanvasEvent[];
   module_items: CanvasModuleItem[];
   extracted_dates: ExtractedDate[];
@@ -235,7 +248,7 @@ export async function fetchAllCanvasData(userId: string): Promise<CanvasData> {
   const courseNameById = new Map(activeCourses.map((c) => [c.id, c.name]));
 
   // 2. Fetch everything in parallel
-  const [assignmentResults, quizResults, eventsResult, announcementsResult, moduleItemResults] = await Promise.all([
+  const [assignmentResults, quizResults, eventsResult, announcementsResult, discussionResults, moduleItemResults] = await Promise.all([
     Promise.allSettled(
       activeCourses.map((course) =>
         canvasFetch<CanvasAssignment>(
@@ -322,6 +335,25 @@ export async function fetchAllCanvasData(userId: string): Promise<CanvasData> {
       }
     })(),
 
+    // Discussion topics
+    Promise.allSettled(
+      activeCourses.map(async (course) => {
+        try {
+          const topics = await canvasFetch<CanvasDiscussion>(
+            `/courses/${course.id}/discussion_topics?order_by=recent_activity&per_page=50`,
+            token
+          );
+          return topics.map((t) => ({
+            ...t,
+            course_id: course.id,
+            course_name: course.name,
+          }));
+        } catch {
+          return [] as CanvasDiscussion[];
+        }
+      })
+    ),
+
     // Module items — only Pages, Quizzes, Assignments, ExternalUrl (skip Files for speed)
     Promise.allSettled(
       activeCourses.map(async (course) => {
@@ -377,6 +409,9 @@ export async function fetchAllCanvasData(userId: string): Promise<CanvasData> {
       courseNameById.get(parseInt((a.context_code || '').replace('course_', ''), 10)) || '',
   }));
 
+  const allDiscussions: CanvasDiscussion[] = [];
+  for (const r of discussionResults) if (r.status === 'fulfilled') allDiscussions.push(...r.value);
+
   const allModuleItems: CanvasModuleItem[] = [];
   for (const r of moduleItemResults) if (r.status === 'fulfilled') allModuleItems.push(...r.value);
 
@@ -385,6 +420,12 @@ export async function fetchAllCanvasData(userId: string): Promise<CanvasData> {
   for (const a of allAnnouncements) {
     const text = stripHtml(a.title + '\n' + (a.message || ''));
     extracted_dates.push(...extractDatesFromText(text, a.id, a.course_name || '', a.posted_at));
+  }
+
+  // Extract dates from discussions
+  for (const d of allDiscussions) {
+    const text = stripHtml(d.title + '\n' + (d.message || ''));
+    extracted_dates.push(...extractDatesFromText(text, d.id, d.course_name || '', d.posted_at));
   }
 
   // Also extract from syllabi
@@ -402,6 +443,7 @@ export async function fetchAllCanvasData(userId: string): Promise<CanvasData> {
     assignments: allAssignments,
     quizzes: allQuizzes,
     announcements: allAnnouncements,
+    discussions: allDiscussions,
     events,
     module_items: allModuleItems,
     extracted_dates,

@@ -14,7 +14,24 @@ import { syncCalendarToCache, isCacheStale, registerGcalWatch } from '@/lib/gcal
 const CALENDAR_MAX_AGE_MS   = 5 * 60 * 1000;        // 5 min → trigger background refresh
 const WEBHOOK_RENEW_BEFORE  = 24 * 60 * 60 * 1000;  // 24 h before expiry → re-register
 
-export const GET = withAuth(async (_req, userId) => {
+export const GET = withAuth(async (req, userId) => {
+  const url = new URL(req.url);
+  const forceRefresh = url.searchParams.get('refresh') === '1';
+
+  // ── Force refresh — wait for sync, bypass cache ──────────────────────────
+  if (forceRefresh) {
+    try {
+      const events = await syncCalendarToCache(userId);
+      return NextResponse.json({
+        events: events || [],
+        stale: false,
+        cached_at: new Date().toISOString(),
+      }, { headers: { 'Cache-Control': 'no-store' } });
+    } catch {
+      // fall through to cache read
+    }
+  }
+
   // ── 1. Instant read from cache ────────────────────────────────────────────
   const { data: cached } = await supabaseAdmin
     .from('calendar_cache')

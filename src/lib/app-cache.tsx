@@ -42,6 +42,8 @@ interface AppCache {
   refreshCalendar: () => Promise<void>;
   refreshHealth: () => Promise<void>;
   invalidateAll: () => void;
+  syncAll: () => Promise<void>;
+  syncing: boolean;
 }
 
 const Ctx = createContext<AppCache | null>(null);
@@ -65,6 +67,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [plans, setPlans] = useState<Record<string, Plan | null>>({});
   const [completions, setCompletions] = useState<Record<string, Set<string>>>({});
   const [ready, setReady] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const lastFetched = useRef<Record<string, number>>({});
 
@@ -138,6 +141,34 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const invalidateAll = useCallback(() => {
     lastFetched.current = {};
   }, []);
+
+  const syncAll = useCallback(async () => {
+    if (syncing) return;
+    setSyncing(true);
+    lastFetched.current = {};
+    try {
+      await Promise.allSettled([
+        fetch('/api/calendar?refresh=1').then(r => r.json()).then(r => {
+          if (r?.events) { setCalEvents(r.events); markFresh('calendar'); }
+        }),
+        fetch('/api/canvas?refresh=1').then(() => {}),
+        fetch('/api/health').then(r => r.json()).then(r => {
+          if (r) { setHealth(r); markFresh('health'); }
+        }),
+        fetch(`/api/today?date=${todayISO()}`).then(r => r.json()).then(r => {
+          if (r) {
+            const today = todayISO();
+            setPlans(p => ({ ...p, [today]: r.plan ?? null }));
+            const ids: string[] = r.completed_ids || [];
+            setCompletions(c => ({ ...c, [today]: new Set(ids) }));
+            markFresh(`plan:${today}`);
+          }
+        }),
+      ]);
+    } finally {
+      setSyncing(false);
+    }
+  }, [syncing]);
 
   // Hydrate from IndexedDB first, then warm up from server
   useEffect(() => {
@@ -263,8 +294,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(() => ({
     settings, health, briefing, calEvents, plans, completions, ready,
     refreshPlan, refreshCalendar, refreshHealth, invalidateAll,
+    syncAll, syncing,
   }), [settings, health, briefing, calEvents, plans, completions, ready,
-      refreshPlan, refreshCalendar, refreshHealth, invalidateAll]);
+      refreshPlan, refreshCalendar, refreshHealth, invalidateAll,
+      syncAll, syncing]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

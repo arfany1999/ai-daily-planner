@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { T } from '@/lib/theme';
+import { useAppData } from '@/lib/app-cache';
 
 export default function Nav() {
   const { data: session } = useSession();
+  const app = useAppData();
   const initial = session?.user?.name?.[0] || session?.user?.email?.[0]?.toUpperCase() || 'H';
   const [notifCount, setNotifCount] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -59,6 +61,25 @@ export default function Nav() {
         </div>
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {/* Sync button */}
+        <button
+          onClick={() => app.syncAll()}
+          disabled={app.syncing}
+          title="Sync all data"
+          style={{
+            width: 32, height: 32, borderRadius: 10,
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: app.syncing ? 'wait' : 'pointer',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+            style={{ animation: app.syncing ? 'syncSpin 1s linear infinite' : 'none' }}>
+            <path d="M21 2v6h-6M3 22v-6h6" stroke={app.syncing ? T.teal : T.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M3 12a9 9 0 0115.5-6.36L21 8M21 12a9 9 0 01-15.5 6.36L3 16" stroke={app.syncing ? T.teal : T.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+
         {/* Search trigger */}
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('cmd-open'))}

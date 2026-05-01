@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { T, DOMAINS } from '@/lib/theme';
+import { useAppData } from '@/lib/app-cache';
 
 /* ── Primary nav ── */
 const NAV: { id: string; label: string; icon: (a: boolean) => React.ReactNode; kbd?: string }[] = [
@@ -182,6 +183,7 @@ function DomainFilters() {
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const app = useAppData();
   const name = session?.user?.name || session?.user?.email || 'You';
   const initial = name[0]?.toUpperCase() || 'H';
 
@@ -218,6 +220,30 @@ export default function Sidebar() {
           <div className="title-display" style={{ fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: '-0.02em', lineHeight: 1 }}>Commander</div>
           <div style={{ fontSize: 9.5, color: T.textFaint, fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', marginTop: 2 }}>AI Planner</div>
         </div>
+        <button
+          onClick={() => app.syncAll()}
+          disabled={app.syncing}
+          title="Sync all data"
+          style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: app.syncing ? 'wait' : 'pointer',
+            transition: 'all 0.2s ease',
+            flexShrink: 0,
+          }}
+          onMouseEnter={e => { if (!app.syncing) { e.currentTarget.style.background = 'var(--surface-hover)'; e.currentTarget.style.borderColor = 'var(--teal-brd)'; } }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+            style={{
+              animation: app.syncing ? 'syncSpin 1s linear infinite' : 'none',
+              transition: 'color 0.2s',
+            }}>
+            <path d="M21 2v6h-6M3 22v-6h6" stroke={app.syncing ? T.teal : T.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M3 12a9 9 0 0115.5-6.36L21 8M21 12a9 9 0 01-15.5 6.36L3 16" stroke={app.syncing ? T.teal : T.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
       </div>
 
       {/* Command bar trigger */}
