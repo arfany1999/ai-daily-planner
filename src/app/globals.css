@@ -287,10 +287,10 @@ input::placeholder, textarea::placeholder {
 }
 
 /* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 6px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
 
 /* ── Glass morphism utilities ── */
 .glass {
@@ -333,17 +333,17 @@ input::placeholder, textarea::placeholder {
 
 /* ── Card lift ── */
 .card-lift {
-  transition: transform 0.25s var(--ease-spring), border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.3s var(--ease-spring), border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
 }
 .card-lift:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   border-color: var(--teal-brd) !important;
   background: var(--surface-hi) !important;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-md), 0 0 20px var(--teal-glow);
 }
 .card-lift:active {
-  transform: scale(0.985);
-  transition-duration: 0.08s;
+  transform: scale(0.985) translateY(-1px);
+  transition-duration: 0.1s;
 }
 
 /* ── Selection ── */
@@ -406,11 +406,6 @@ input::placeholder, textarea::placeholder {
     grid-template-columns: 1fr 1fr !important;
     gap: var(--density-gap) !important;
   }
-  .ai-bar-wrap {
-    left: calc(130px + 50vw) !important;
-    bottom: 0 !important;
-    max-width: 720px !important;
-  }
 }
 
 /* ── Mobile / desktop visibility helpers ── */
@@ -426,9 +421,9 @@ input::placeholder, textarea::placeholder {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: var(--glass);
-  backdrop-filter: blur(24px) saturate(1.6);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  background: var(--glass-hi);
+  backdrop-filter: blur(32px) saturate(1.8);
+  -webkit-backdrop-filter: blur(32px) saturate(1.8);
   border-bottom: 1px solid var(--border);
   padding: 10px 14px 12px;
 }

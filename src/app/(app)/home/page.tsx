@@ -454,7 +454,7 @@ export default function HomePage() {
               color: T.textMuted, fontSize: 13,
               background: 'var(--surface)', borderRadius: 14, border: '1px dashed var(--border)',
             }}>
-              Nothing scheduled. Tap <span className="mono" style={{ background: 'var(--surface-hi)', padding: '1px 5px', borderRadius: 4 }}>⌘K</span> to add a block.
+              Nothing scheduled. Press <span className="mono" style={{ background: 'var(--surface-hi)', padding: '2px 6px', borderRadius: 5, border: '1px solid var(--border)' }}>⌘K</span> to add a block.
             </div>
           ) : (
             <div
@@ -686,8 +686,8 @@ export default function HomePage() {
           </div>
         )}
 
-        <div className="hide-mobile" style={{ fontSize: 10.5, color: T.textFaint, textAlign: 'center', marginTop: 30 }}>
-          Press <span className="mono" style={{ background: 'var(--surface)', padding: '2px 6px', borderRadius: 4 }}>⌘K</span> for anything.
+        <div className="hide-mobile" style={{ fontSize: 10, color: T.textFaint, textAlign: 'center', marginTop: 30, letterSpacing: '0.02em' }}>
+          <span className="mono" style={{ background: 'var(--surface)', padding: '2px 6px', borderRadius: 5, border: '1px solid var(--border)' }}>⌘K</span> to schedule or jump
         </div>
       </div>
     </>

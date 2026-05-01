@@ -225,13 +225,13 @@ export default function Sidebar() {
         onClick={() => window.dispatchEvent(new CustomEvent('cmd-open'))}
         style={{
           margin: '10px 12px 6px',
-          padding: '8px 12px',
+          padding: '7px 12px',
           background: 'var(--surface)',
           border: '1px solid var(--border)',
           borderRadius: 10,
           display: 'flex', alignItems: 'center', gap: 10,
           cursor: 'pointer',
-          transition: 'all 0.15s',
+          transition: 'all 0.2s ease',
         }}
         onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)'; e.currentTarget.style.borderColor = 'var(--teal-brd)'; }}
         onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
@@ -240,7 +240,7 @@ export default function Sidebar() {
           <circle cx="11" cy="11" r="7" stroke={T.textMuted} strokeWidth="2"/>
           <path d="M21 21l-4.35-4.35" stroke={T.textMuted} strokeWidth="2" strokeLinecap="round"/>
         </svg>
-        <span style={{ fontSize: 11.5, color: T.textMuted, flex: 1, textAlign: 'left' }}>Ask or jump…</span>
+        <span style={{ fontSize: 11.5, color: T.textMuted, flex: 1, textAlign: 'left' }}>Search…</span>
         <span className="mono" style={{ fontSize: 10, color: T.textFaint, background: 'var(--surface)', padding: '2px 5px', borderRadius: 4, border: '1px solid var(--border)' }}>⌘K</span>
       </button>
 
@@ -301,7 +301,7 @@ export default function Sidebar() {
           <div style={{ fontSize: 12, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {name.split(' ')[0]}
           </div>
-          <div style={{ fontSize: 9.5, color: T.textFaint, letterSpacing: '0.04em' }}>Commander · v2</div>
+          <div style={{ fontSize: 9.5, color: T.textFaint, letterSpacing: '0.04em' }}>Commander · v3</div>
         </div>
       </div>
     </nav>

@@ -40,12 +40,12 @@ const JUMPS: JumpTarget[] = [
 ];
 
 const STARTER_SUGGESTIONS = [
-  'Plan my tomorrow',
   'Schedule 90 min study for AT3 on Friday 2pm',
   'Move gym to 7pm tomorrow',
-  'I have 45 min — what should I do?',
-  'What deadlines am I risking this week?',
-  "I'm tired, swap today for light blocks",
+  'Jump to Calendar',
+  'Jump to Canvas',
+  'Jump to Focus',
+  'Jump to Progress',
 ];
 
 interface SRInstance {
@@ -256,41 +256,7 @@ export default function CommandBar() {
     setExecuting(false);
   };
 
-  const askInline = async (text: string) => {
-    setStreamText('');
-    setMode('executing');
-    try {
-      const res = await fetch('/api/ask/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, page_context: pathname?.replace('/', '') || 'home', conversation: [] }),
-      });
-      if (!res.ok || !res.body) { setMode('error'); return; }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const p = JSON.parse(line.slice(6).trim()) as { delta?: string; finalMessage?: string; type?: string };
-            if (p.delta) setStreamText(s => s + p.delta);
-            if (p.type === 'done' && p.finalMessage) setStreamText(p.finalMessage);
-          } catch {}
-        }
-      }
-      setMode('ready');
-    } catch {
-      setMode('error');
-    }
-  };
-
-  // Suggestions (jumps + starters + history)
+  // Suggestions (jumps + starters)
   const suggestions: Suggestion[] = (() => {
     const q = query.trim().toLowerCase();
     const out: Suggestion[] = [];
@@ -349,9 +315,9 @@ export default function CommandBar() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={e => {
-              if (e.key === 'Enter') { e.preventDefault(); if (parsed) execute(); else askInline(query); }
+              if (e.key === 'Enter') { e.preventDefault(); if (parsed) execute(); }
             }}
-            placeholder="Ask, schedule, or jump…  e.g. ‘study AT3 friday 2pm for 90 min’"
+            placeholder="Schedule, search, or jump…  e.g. 'study AT3 friday 2pm'"
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
               fontSize: 16, color: T.text, fontWeight: 500, letterSpacing: '-0.01em',
