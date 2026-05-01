@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS calendar_cache (
   user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   data jsonb NOT NULL,
   fetched_at timestamptz DEFAULT now(),
+  sync_token jsonb DEFAULT NULL,
   UNIQUE(user_id)
 );
 

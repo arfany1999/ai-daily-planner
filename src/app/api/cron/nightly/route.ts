@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAllUsers, getUserTokens, logError, getUserContext } from '@/lib/db';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getCalendarService } from '@/lib/google';
 import { generateWithClaude, isAiAvailable } from '@/lib/claude';
 import { fetchAllCanvasData } from '@/lib/canvas';
 import { buildContextText, storeContextSnapshot } from '@/lib/context-builder';
@@ -22,9 +21,8 @@ function getTodayDate(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: TIMEZONE });
 }
 
-// Verify cron secret (Vercel sends this header)
 function verifyCron(req: Request): boolean {
-  if (!CRON_SECRET) return true; // allow if not configured (dev)
+  if (!CRON_SECRET) return true;
   const auth = req.headers.get('authorization');
   return auth === `Bearer ${CRON_SECRET}`;
 }
@@ -48,34 +46,9 @@ export async function GET(req: Request) {
         continue;
       }
 
-      // 1. Refresh calendar cache
+      // 1. Refresh calendar cache (all calendars, 30 days, incremental sync)
       try {
-        const calendar = await getCalendarService(user.id);
-        const now = new Date();
-        const start = new Date(now); start.setHours(0, 0, 0, 0);
-        const end = new Date(start); end.setDate(end.getDate() + 8);
-
-        const res = await calendar.events.list({
-          calendarId: 'primary',
-          timeMin: start.toISOString(),
-          timeMax: end.toISOString(),
-          timeZone: TIMEZONE,
-          singleEvents: true,
-          orderBy: 'startTime',
-          maxResults: 100,
-        });
-
-        const events = (res.data.items || []).map((e) => ({
-          id: e.id, title: e.summary || 'Untitled',
-          description: e.description || '', location: e.location || '',
-          start: e.start?.dateTime || e.start?.date || '',
-          end: e.end?.dateTime || e.end?.date || '',
-          allDay: !e.start?.dateTime, color: e.colorId || null, status: e.status,
-        }));
-
-        await supabaseAdmin.from('calendar_cache').upsert({
-          user_id: user.id, data: events, fetched_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
+        const events = await syncCalendarToCache(user.id);
         steps.calendar = `ok — ${events.length} events`;
       } catch (e) {
         steps.calendar = `error — ${e instanceof Error ? e.message : 'unknown'}`;
@@ -132,7 +105,7 @@ export async function GET(req: Request) {
       }
 
       if (isAiAvailable()) {
-        // 5. Generate briefing — passive/informational; always runs
+        // 5. Generate briefing
         try {
           const briefing = await generateBriefing(user.id);
           const today = getTodayDate();
@@ -144,7 +117,7 @@ export async function GET(req: Request) {
           steps.briefing = `error — ${e instanceof Error ? e.message : 'unknown'}`;
         }
 
-        // 6. Pre-build daily context snapshot for tomorrow (AI chat reads this for instant responses)
+        // 6. Pre-build daily context snapshot for tomorrow
         try {
           const tomorrow = getTomorrowDate();
           const contextText = await buildContextText(user.id, tomorrow);
@@ -157,14 +130,7 @@ export async function GET(req: Request) {
         steps.ai = 'skipped — AI unavailable';
       }
 
-      // ── Step: Refresh calendar + canvas mirror caches ─────────────────────
-      try {
-        await syncCalendarToCache(user.id);
-        steps.cal_mirror = 'ok';
-      } catch (e) {
-        steps.cal_mirror = `error — ${e instanceof Error ? e.message : 'unknown'}`;
-      }
-
+      // 7. Refresh Canvas mirror cache
       try {
         await syncCanvasToCache(user.id);
         steps.canvas_mirror = 'ok';
@@ -180,7 +146,7 @@ export async function GET(req: Request) {
     results.push({ user: user.email, steps });
   }
 
-  // ── Renew any Google Calendar webhook channels expiring in the next 24h ──
+  // Renew any Google Calendar webhook channels expiring in the next 24h
   try {
     await renewExpiringWatches();
   } catch { /* non-fatal */ }
@@ -193,7 +159,7 @@ export async function GET(req: Request) {
   });
 }
 
-// --- Generation helpers (duplicated from briefing/tomorrow routes to avoid auth wrapper) ---
+// --- Generation helpers ---
 
 async function generateTomorrow(userId: string) {
   const userContext = await getUserContext(userId);
@@ -218,13 +184,11 @@ async function generateTomorrow(userId: string) {
   const customPrompt = promptRes.data?.prompt_text || '';
   const gymDays: string[] = settingsRes.data?.gym_days || [];
 
-  // Days gym wasn't logged recently (for nudge generation)
   const daysSinceGym = (() => {
     const gymCompletions = (completionsRes.data || []).filter((c: { task_id: string }) => c.task_id.includes('gym'));
-    return gymCompletions.length === 0 ? 3 : 0; // rough approximation
+    return gymCompletions.length === 0 ? 3 : 0;
   })();
 
-  // Upcoming deadlines within 5 days (for nudge generation)
   const urgentDeadlines = canvas?.assignments?.filter((a: { due_at: string | null; name: string }) => {
     if (!a.due_at) return false;
     const days = Math.ceil((new Date(a.due_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24));

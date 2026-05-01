@@ -3,14 +3,14 @@
 /**
  * AppDataProvider — shared client-side cache for frequently used data.
  *
- * Why: every page was independently fetching /api/settings, /api/health,
- * /api/briefing, /api/today, /api/calendar on mount. That's 5+ requests
- * × 200-500ms each = multi-second tab switches. By sharing these across
- * the whole (app) tree, tab switches reuse cached data instantly and
- * revalidate in the background.
- *
  * Stale-while-revalidate semantics: reads return cached data immediately,
  * a background fetch refreshes it. Single in-flight request per key.
+ *
+ * Realtime: subscribes to Supabase Postgres Changes on both `todos` and
+ * `calendar_cache` tables so updates from webhooks / cron are instant.
+ *
+ * Visibility refresh: when the tab becomes visible again after being hidden,
+ * stale data is automatically refreshed.
  */
 
 import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
@@ -24,7 +24,7 @@ function todayISO() {
 }
 
 interface Plan { timeline?: unknown[]; top_priorities?: string[]; nudges?: unknown[]; warnings?: string[]; summary?: string; }
-interface CalEvent { id: string; title: string; start: string; end: string; allDay: boolean; color: string | null; isDeadline?: boolean; description?: string; }
+interface CalEvent { id: string; title: string; start: string; end: string; allDay: boolean; color: string | null; isDeadline?: boolean; description?: string; calendarId?: string; }
 interface Briefing { summary?: string; days?: unknown[]; week_priorities?: string[]; }
 interface Settings { setup_complete?: boolean; [k: string]: unknown; }
 interface Health { checks?: { google?: { status?: string }; canvas?: { status?: string } }; }
@@ -34,8 +34,8 @@ interface AppCache {
   health: Health | null;
   briefing: Briefing | null;
   calEvents: CalEvent[];
-  plans: Record<string, Plan | null>;       // keyed by YYYY-MM-DD
-  completions: Record<string, Set<string>>; // keyed by YYYY-MM-DD
+  plans: Record<string, Plan | null>;
+  completions: Record<string, Set<string>>;
   ready: boolean;
 
   refreshPlan: (date: string) => Promise<void>;
@@ -46,7 +46,6 @@ interface AppCache {
 
 const Ctx = createContext<AppCache | null>(null);
 
-// Single-flight: de-duplicate concurrent fetches for the same key
 const inflight = new Map<string, Promise<unknown>>();
 function once<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const existing = inflight.get(key);
@@ -56,7 +55,7 @@ function once<T>(key: string, fn: () => Promise<T>): Promise<T> {
   return p;
 }
 
-const CACHE_TTL_MS = 60_000; // 60s — after that, fresh fetch on read
+const CACHE_TTL_MS = 60_000;
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -140,11 +139,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     lastFetched.current = {};
   }, []);
 
-  // Hydrate from IndexedDB first (instant native-app feel), then warm up from server
+  // Hydrate from IndexedDB first, then warm up from server
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Hydrate from local cache immediately
       const [s, h, b, c, pMap, cMap] = await Promise.all([
         idbGet<Settings>(IDB_KEYS.settings),
         idbGet<Health>(IDB_KEYS.health),
@@ -164,10 +162,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         for (const k of Object.keys(cMap)) asSets[k] = new Set(cMap[k]);
         setCompletions(asSets);
       }
-      // With local data in place, we can render right away
       setReady(true);
 
-      // Warm up from server — refreshes cache in the background
       const today = todayISO();
       await Promise.allSettled([loadSettings(), loadHealth(), loadBriefing(), loadCalendar(), loadPlan(today)]);
     })();
@@ -180,7 +176,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     };
   }, [loadSettings, loadHealth, loadBriefing, loadCalendar, loadPlan, invalidateAll]);
 
-  // Persist each slice to IDB whenever it changes (fire-and-forget)
+  // Persist each slice to IDB whenever it changes
   useEffect(() => { if (settings) idbSet(IDB_KEYS.settings, settings); }, [settings]);
   useEffect(() => { if (health) idbSet(IDB_KEYS.health, health); }, [health]);
   useEffect(() => { if (briefing) idbSet(IDB_KEYS.briefing, briefing); }, [briefing]);
@@ -193,16 +189,18 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     idbSet(IDB_KEYS.completions, serialisable);
   }, [completions]);
 
-  // Supabase Realtime on todos — when agent/cron writes a plan, the client
-  // picks it up with zero refetch. Subscription filters to current user's rows.
+  // Supabase Realtime: todos + calendar_cache
   useEffect(() => {
     let cancelled = false;
+    let cleanupFns: (() => void)[] = [];
+
     (async () => {
       const session = await fetch('/api/auth/session').then(r => r.json()).catch(() => null);
       const userId = session?.userId;
       if (!userId || cancelled) return;
 
-      const channel = supabase
+      // Realtime on todos
+      const todosChannel = supabase
         .channel(`todos-${userId}`)
         .on('postgres_changes',
           { event: '*', schema: 'public', table: 'todos', filter: `user_id=eq.${userId}` },
@@ -218,14 +216,50 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           })
         .subscribe();
 
-      return () => { void supabase.removeChannel(channel); };
+      // Realtime on calendar_cache — instant UI update when webhook sync writes new data
+      const calChannel = supabase
+        .channel(`cal-cache-${userId}`)
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'calendar_cache', filter: `user_id=eq.${userId}` },
+          (payload) => {
+            const fresh = (payload.new as { data: CalEvent[] })?.data;
+            if (fresh) {
+              setCalEvents(fresh);
+              lastFetched.current['calendar'] = Date.now();
+            }
+          })
+        .subscribe();
+
+      cleanupFns.push(
+        () => { void supabase.removeChannel(todosChannel); },
+        () => { void supabase.removeChannel(calChannel); },
+      );
     })();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+      cleanupFns.forEach(fn => fn());
+    };
   }, []);
 
-  // Stable context value — only changes when one of the underlying slices
-  // actually changes. Without this memo, EVERY state update (even unrelated
-  // slices) would force every consumer to re-render.
+  // Visibility refresh: when tab becomes visible, refresh stale data
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (stale('calendar')) {
+        lastFetched.current['calendar'] = 0;
+        loadCalendar();
+      }
+      const today = todayISO();
+      if (stale(`plan:${today}`)) {
+        lastFetched.current[`plan:${today}`] = 0;
+        loadPlan(today);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [loadCalendar, loadPlan]);
+
   const value = useMemo(() => ({
     settings, health, briefing, calEvents, plans, completions, ready,
     refreshPlan, refreshCalendar, refreshHealth, invalidateAll,
@@ -241,15 +275,6 @@ export function useAppData(): AppCache {
   return c;
 }
 
-/**
- * Plan for a specific date. Reads the slice from cache and fires a
- * background load ONLY when the date isn't in the cache yet.
- *
- * Important: we keep `refreshPlan` out of the useEffect deps because
- * the callback is memoized by the provider and including it here
- * would couple us to any re-renders that update that identity. We
- * depend only on `date` + the presence-check state via `hasPlan`.
- */
 export function usePlan(date: string): { plan: Plan | null; done: Set<string> } {
   const ctx = useAppData();
   const hasPlan = date in ctx.plans;

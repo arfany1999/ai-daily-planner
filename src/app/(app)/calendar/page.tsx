@@ -494,7 +494,7 @@ export default function CalendarPage() {
     if (!userId) return;
     const channel = supabase
       .channel(`cal-${userId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'calendar_cache', filter: `user_id=eq.${userId}` },
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_cache', filter: `user_id=eq.${userId}` },
         (payload) => {
           const fresh = (payload.new as { data: CalEvent[] })?.data || [];
           setEvents(prev => [...fresh, ...prev.filter(e => e.id.startsWith('canvas-'))]);
