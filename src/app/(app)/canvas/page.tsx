@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { T } from '@/lib/theme';
+import { supabase } from '@/lib/supabase';
 
 interface Assignment {
   id: number;
@@ -176,6 +177,28 @@ export default function CanvasPage() {
       }
     })();
     return () => { cancelled = true; };
+  }, []);
+
+  // Realtime: refresh when canvas_cache changes for this user
+  useEffect(() => {
+    let cleanup: (() => void) | null = null;
+    (async () => {
+      const session = await fetch('/api/auth/session').then(r => r.json()).catch(() => null);
+      const userId = session?.userId;
+      if (!userId) return;
+
+      const channel = supabase
+        .channel(`canvas-${userId}`)
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'canvas_cache', filter: `user_id=eq.${userId}` },
+          (payload) => {
+            const fresh = (payload.new as { data: CanvasData })?.data;
+            if (fresh) { setData(fresh); setStale(false); }
+          })
+        .subscribe();
+      cleanup = () => { void supabase.removeChannel(channel); };
+    })();
+    return () => { if (cleanup) cleanup(); };
   }, []);
 
   const saveToken = async () => {
