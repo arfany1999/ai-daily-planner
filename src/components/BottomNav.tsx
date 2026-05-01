@@ -13,6 +13,14 @@ const items = [
       </svg>
     ),
   },
+  { id: '/tasks', label: 'Tasks',
+    icon: (a: boolean) => (
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+        <path d="M9 11l3 3L22 4" stroke={a ? T.teal : T.textMuted} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke={a ? T.teal : T.textMuted} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill={a ? 'var(--teal-glow)' : 'none'}/>
+      </svg>
+    ),
+  },
   { id: '/calendar', label: 'Calendar',
     icon: (a: boolean) => (
       <svg width="21" height="21" viewBox="0 0 24 24" fill="none">

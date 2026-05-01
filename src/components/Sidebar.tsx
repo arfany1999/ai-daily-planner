@@ -17,7 +17,15 @@ const NAV: { id: string; label: string; icon: (a: boolean) => React.ReactNode; k
       </svg>
     ),
   },
-  { id: '/calendar', label: 'Calendar', kbd: '2',
+  { id: '/tasks', label: 'Tasks', kbd: '2',
+    icon: (a) => (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M9 11l3 3L22 4" stroke={a ? T.teal : T.textMuted} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke={a ? T.teal : T.textMuted} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill={a ? 'var(--teal-glow)' : 'none'}/>
+      </svg>
+    ),
+  },
+  { id: '/calendar', label: 'Calendar', kbd: '3',
     icon: (a) => (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
         <rect x="3" y="5" width="18" height="16" rx="2.5" stroke={a ? T.teal : T.textMuted} strokeWidth="1.7" fill={a ? 'var(--teal-glow)' : 'none'}/>
@@ -25,7 +33,7 @@ const NAV: { id: string; label: string; icon: (a: boolean) => React.ReactNode; k
       </svg>
     ),
   },
-  { id: '/tomorrow', label: 'Tomorrow', kbd: '3',
+  { id: '/tomorrow', label: 'Tomorrow', kbd: '4',
     icon: (a) => (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
         <path d="M12 3a9 9 0 109 9" stroke={a ? T.teal : T.textMuted} strokeWidth="1.7" strokeLinecap="round"/>
@@ -33,7 +41,7 @@ const NAV: { id: string; label: string; icon: (a: boolean) => React.ReactNode; k
       </svg>
     ),
   },
-  { id: '/focus', label: 'Focus', kbd: '4',
+  { id: '/focus', label: 'Focus', kbd: '5',
     icon: (a) => (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
         <circle cx="12" cy="12" r="8" stroke={a ? T.teal : T.textMuted} strokeWidth="1.7" fill={a ? 'var(--teal-glow)' : 'none'}/>
@@ -41,7 +49,7 @@ const NAV: { id: string; label: string; icon: (a: boolean) => React.ReactNode; k
       </svg>
     ),
   },
-  { id: '/canvas', label: 'Canvas', kbd: '5',
+  { id: '/canvas', label: 'Canvas', kbd: '6',
     icon: (a) => (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
         <path d="M12 3l2.5 6 6.5.5-5 4.5L18 21l-6-3.5L6 21l1.5-7-5-4.5 6.5-.5L12 3z"
@@ -49,7 +57,7 @@ const NAV: { id: string; label: string; icon: (a: boolean) => React.ReactNode; k
       </svg>
     ),
   },
-  { id: '/progress', label: 'Progress', kbd: '6',
+  { id: '/progress', label: 'Progress', kbd: '7',
     icon: (a) => (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
         <path d="M4 20h16M7 20V11m4 9V5m4 15v-7m4 7V9" stroke={a ? T.teal : T.textMuted} strokeWidth="1.7" strokeLinecap="round"/>

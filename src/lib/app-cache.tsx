@@ -16,6 +16,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { idbGet, idbSet, IDB_KEYS } from '@/lib/idb';
+import { initOfflineQueue } from '@/lib/offline-queue';
 
 const TZ = 'Australia/Melbourne';
 
@@ -29,6 +30,9 @@ interface Briefing { summary?: string; days?: unknown[]; week_priorities?: strin
 interface Settings { setup_complete?: boolean; [k: string]: unknown; }
 interface Health { checks?: { google?: { status?: string }; canvas?: { status?: string } }; }
 
+interface TaskItem { id: string; title: string; status: string; due_date: string | null; priority: number; domain: string; sort_order: number; [k: string]: unknown; }
+interface TaskListItem { id: string; name: string; color: string; sort_order: number; [k: string]: unknown; }
+
 interface AppCache {
   settings: Settings | null;
   health: Health | null;
@@ -36,11 +40,14 @@ interface AppCache {
   calEvents: CalEvent[];
   plans: Record<string, Plan | null>;
   completions: Record<string, Set<string>>;
+  tasks: TaskItem[];
+  taskLists: TaskListItem[];
   ready: boolean;
 
   refreshPlan: (date: string) => Promise<void>;
   refreshCalendar: () => Promise<void>;
   refreshHealth: () => Promise<void>;
+  refreshTasks: () => Promise<void>;
   invalidateAll: () => void;
   syncAll: () => Promise<void>;
   syncing: boolean;
@@ -66,6 +73,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [calEvents, setCalEvents] = useState<CalEvent[]>([]);
   const [plans, setPlans] = useState<Record<string, Plan | null>>({});
   const [completions, setCompletions] = useState<Record<string, Set<string>>>({});
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [taskLists, setTaskLists] = useState<TaskListItem[]>([]);
   const [ready, setReady] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
@@ -109,6 +118,18 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const loadTasks = useCallback(async () => {
+    if (!stale('tasks')) return;
+    await once('tasks', async () => {
+      const [tr, lr] = await Promise.all([
+        fetch('/api/tasks').then(r => r.json()).catch(() => null),
+        fetch('/api/lists').then(r => r.json()).catch(() => null),
+      ]);
+      if (tr?.tasks) { setTasks(tr.tasks); markFresh('tasks'); }
+      if (lr?.lists) { setTaskLists(lr.lists); markFresh('taskLists'); }
+    });
+  }, []);
+
   const loadPlan = useCallback(async (date: string) => {
     const key = `plan:${date}`;
     if (!stale(key)) return;
@@ -138,6 +159,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     await loadHealth();
   }, [loadHealth]);
 
+  const refreshTasks = useCallback(async () => {
+    lastFetched.current['tasks'] = 0;
+    lastFetched.current['taskLists'] = 0;
+    await loadTasks();
+  }, [loadTasks]);
+
   const invalidateAll = useCallback(() => {
     lastFetched.current = {};
   }, []);
@@ -152,6 +179,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           if (r?.events) { setCalEvents(r.events); markFresh('calendar'); }
         }),
         fetch('/api/canvas?refresh=1').then(() => {}),
+        fetch('/api/tasks').then(r => r.json()).then(r => {
+          if (r?.tasks) { setTasks(r.tasks); markFresh('tasks'); }
+        }),
         fetch('/api/health').then(r => r.json()).then(r => {
           if (r) { setHealth(r); markFresh('health'); }
         }),
@@ -174,13 +204,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [s, h, b, c, pMap, cMap] = await Promise.all([
+      const [s, h, b, c, pMap, cMap, tks, tls] = await Promise.all([
         idbGet<Settings>(IDB_KEYS.settings),
         idbGet<Health>(IDB_KEYS.health),
         idbGet<Briefing>(IDB_KEYS.briefing),
         idbGet<CalEvent[]>(IDB_KEYS.calEvents),
         idbGet<Record<string, Plan | null>>(IDB_KEYS.plans),
         idbGet<Record<string, string[]>>(IDB_KEYS.completions),
+        idbGet<TaskItem[]>(IDB_KEYS.tasks),
+        idbGet<TaskListItem[]>(IDB_KEYS.taskLists),
       ]);
       if (cancelled) return;
       if (s) setSettings(s);
@@ -188,24 +220,27 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       if (b) setBriefing(b);
       if (c) setCalEvents(c);
       if (pMap) setPlans(pMap);
+      if (tks) setTasks(tks);
+      if (tls) setTaskLists(tls);
       if (cMap) {
         const asSets: Record<string, Set<string>> = {};
         for (const k of Object.keys(cMap)) asSets[k] = new Set(cMap[k]);
         setCompletions(asSets);
       }
       setReady(true);
+      initOfflineQueue();
 
       const today = todayISO();
-      await Promise.allSettled([loadSettings(), loadHealth(), loadBriefing(), loadCalendar(), loadPlan(today)]);
+      await Promise.allSettled([loadSettings(), loadHealth(), loadBriefing(), loadCalendar(), loadPlan(today), loadTasks()]);
     })();
 
-    const onChange = () => { invalidateAll(); loadPlan(todayISO()); loadCalendar(); };
+    const onChange = () => { invalidateAll(); loadPlan(todayISO()); loadCalendar(); loadTasks(); };
     window.addEventListener('cmd-data-changed', onChange);
     return () => {
       cancelled = true;
       window.removeEventListener('cmd-data-changed', onChange);
     };
-  }, [loadSettings, loadHealth, loadBriefing, loadCalendar, loadPlan, invalidateAll]);
+  }, [loadSettings, loadHealth, loadBriefing, loadCalendar, loadPlan, loadTasks, invalidateAll]);
 
   // Persist each slice to IDB whenever it changes
   useEffect(() => { if (settings) idbSet(IDB_KEYS.settings, settings); }, [settings]);
@@ -213,6 +248,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (briefing) idbSet(IDB_KEYS.briefing, briefing); }, [briefing]);
   useEffect(() => { if (calEvents.length) idbSet(IDB_KEYS.calEvents, calEvents); }, [calEvents]);
   useEffect(() => { if (Object.keys(plans).length) idbSet(IDB_KEYS.plans, plans); }, [plans]);
+  useEffect(() => { if (tasks.length) idbSet(IDB_KEYS.tasks, tasks); }, [tasks]);
+  useEffect(() => { if (taskLists.length) idbSet(IDB_KEYS.taskLists, taskLists); }, [taskLists]);
   useEffect(() => {
     if (!Object.keys(completions).length) return;
     const serialisable: Record<string, string[]> = {};
@@ -261,9 +298,22 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           })
         .subscribe();
 
+      const tasksChannel = supabase
+        .channel(`tasks-${userId}`)
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${userId}` },
+          () => {
+            lastFetched.current['tasks'] = 0;
+            fetch('/api/tasks').then(r => r.json()).then(r => {
+              if (r?.tasks) { setTasks(r.tasks); lastFetched.current['tasks'] = Date.now(); }
+            }).catch(() => {});
+          })
+        .subscribe();
+
       cleanupFns.push(
         () => { void supabase.removeChannel(todosChannel); },
         () => { void supabase.removeChannel(calChannel); },
+        () => { void supabase.removeChannel(tasksChannel); },
       );
     })();
 
@@ -292,11 +342,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   }, [loadCalendar, loadPlan]);
 
   const value = useMemo(() => ({
-    settings, health, briefing, calEvents, plans, completions, ready,
-    refreshPlan, refreshCalendar, refreshHealth, invalidateAll,
+    settings, health, briefing, calEvents, plans, completions, tasks, taskLists, ready,
+    refreshPlan, refreshCalendar, refreshHealth, refreshTasks, invalidateAll,
     syncAll, syncing,
-  }), [settings, health, briefing, calEvents, plans, completions, ready,
-      refreshPlan, refreshCalendar, refreshHealth, invalidateAll,
+  }), [settings, health, briefing, calEvents, plans, completions, tasks, taskLists, ready,
+      refreshPlan, refreshCalendar, refreshHealth, refreshTasks, invalidateAll,
       syncAll, syncing]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

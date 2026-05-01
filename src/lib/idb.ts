@@ -69,6 +69,8 @@ export const IDB_KEYS = {
   health: 'v1:health',
   briefing: 'v1:briefing',
   calEvents: 'v1:calEvents',
-  plans: 'v1:plans',         // Record<date, Plan|null>
-  completions: 'v1:completions', // Record<date, string[]>
+  plans: 'v1:plans',
+  completions: 'v1:completions',
+  tasks: 'v1:tasks',
+  taskLists: 'v1:taskLists',
 };

@@ -324,3 +324,76 @@ ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS domains jsonb DEFAULT '[
   {"id":"gym","label":"Health / Gym","icon":"🏋️","weight":3,"enabled":true,"color":"#27c77a"},
   {"id":"personal","label":"Personal / Admin","icon":"🏠","weight":2,"enabled":true,"color":"#e94f4f"}
 ]'::jsonb;
+
+-- ===== STANDALONE TASKS (TickTick parity) =====
+
+CREATE TABLE IF NOT EXISTS task_lists (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  name text NOT NULL,
+  color text DEFAULT '#C4764A',
+  icon text DEFAULT '',
+  is_smart boolean DEFAULT false,
+  smart_filter jsonb,
+  sort_order float DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  title text NOT NULL,
+  description text DEFAULT '',
+  notes text DEFAULT '',
+  due_date date,
+  due_time time,
+  start_date date,
+  estimated_minutes int,
+  priority smallint DEFAULT 0 CHECK (priority BETWEEN 0 AND 3),
+  domain text DEFAULT 'admin',
+  list_id uuid REFERENCES task_lists(id) ON DELETE SET NULL,
+  tags text[] DEFAULT '{}',
+  status text DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'done', 'cancelled')),
+  completed_at timestamptz,
+  rrule text,
+  rrule_parent_id uuid REFERENCES tasks(id) ON DELETE SET NULL,
+  sort_order float DEFAULT 0,
+  kanban_column text DEFAULT 'todo',
+  google_event_id text,
+  source text DEFAULT 'manual' CHECK (source IN ('manual', 'quick_add', 'ai_plan', 'recurring')),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS subtasks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id uuid REFERENCES tasks(id) ON DELETE CASCADE NOT NULL,
+  title text NOT NULL,
+  completed boolean DEFAULT false,
+  sort_order float DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS task_reminders (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id uuid REFERENCES tasks(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  remind_at timestamptz NOT NULL,
+  offset_minutes int,
+  sent boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_user_status ON tasks(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_tasks_user_due ON tasks(user_id, due_date);
+CREATE INDEX IF NOT EXISTS idx_tasks_user_list ON tasks(user_id, list_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_rrule_parent ON tasks(rrule_parent_id) WHERE rrule_parent_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_tasks_tags ON tasks USING gin(tags);
+CREATE INDEX IF NOT EXISTS idx_subtasks_task ON subtasks(task_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_task_lists_user ON task_lists(user_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_task_reminders_fire ON task_reminders(remind_at) WHERE sent = false;
+
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subtasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE task_lists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE task_reminders ENABLE ROW LEVEL SECURITY;

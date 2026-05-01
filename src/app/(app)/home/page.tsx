@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { T, DOMAINS, inferDomainFromTitle, urgencyToDomain, melbSunTimes } from '@/lib/theme';
+import { T, DOMAINS, inferDomainFromTitle, urgencyToDomain, melbSunTimes, DOMAIN_BY_ID } from '@/lib/theme';
 import DayTicker from '@/components/DayTicker';
 import SkippedBlockCard from '@/components/SkippedBlockCard';
 import OnboardingTour from '@/components/OnboardingTour';
@@ -196,6 +196,21 @@ export default function HomePage() {
   const mergedRaw = useMemo(() =>
     todayPlan?.timeline ? mergeTimeline(todayPlan.timeline as unknown as TimelineBlock[], calEvents) : calEvents.map(calToBlock)
   , [todayPlan, calEvents]);
+
+  const todayTasks = useMemo(() => {
+    return (app.tasks || []).filter(t =>
+      t.status !== 'done' && t.status !== 'cancelled' && t.due_date === selectedDate
+    );
+  }, [app.tasks, selectedDate]);
+
+  const toggleManualTask = async (taskId: string) => {
+    await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'done' }),
+    });
+    app.refreshTasks();
+  };
 
   const merged = useMemo(() => mergedRaw.filter(b => {
     const dom = b.domain || urgencyToDomain(b.urgency).id;
@@ -656,6 +671,56 @@ export default function HomePage() {
                   fontSize: 12.5, color: T.red, lineHeight: 1.5,
                 }}>⚠ {w}</div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* My Tasks — manual tasks due today */}
+        {todayTasks.length > 0 && (
+          <div className="anim-slide" style={{ marginBottom: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontSize: 10.5, color: T.textFaint, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                My Tasks
+              </div>
+              <Link href="/tasks" style={{ fontSize: 11, color: T.teal, fontWeight: 600, textDecoration: 'none' }}>View all</Link>
+            </div>
+            <div style={{
+              background: 'var(--surface)', borderRadius: 14,
+              border: '1px solid var(--border)', overflow: 'hidden',
+            }}>
+              {todayTasks.map((task) => {
+                const dom = DOMAIN_BY_ID[task.domain] || DOMAINS[4];
+                const overdue = task.due_date && new Date(task.due_date + 'T23:59:59') < new Date();
+                return (
+                  <div key={task.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 14px', borderBottom: '1px solid var(--border-soft)',
+                  }}>
+                    <button
+                      onClick={() => toggleManualTask(task.id)}
+                      style={{
+                        width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                        border: `2px solid ${task.priority > 0 ? ['transparent','var(--blue)','var(--orange)','var(--red)'][task.priority] : 'var(--border-strong)'}`,
+                        background: 'transparent', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {task.title}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 2, alignItems: 'center' }}>
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: `${dom.color}18`, color: dom.color, fontWeight: 600 }}>
+                          {dom.icon} {dom.label}
+                        </span>
+                        {task.due_time ? (
+                          <span style={{ fontSize: 9.5, color: overdue ? 'var(--red)' : T.textMuted, fontWeight: 600 }}>{String(task.due_time)}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
